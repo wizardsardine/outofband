@@ -25,5 +25,11 @@ web-sys = { workspace = true, features = [
 ] }
 serde = { workspace = true }
 bitcoin = { workspace = true }
+base64 = { workspace = true }
+tar = { workspace = true }
+flate2 = { workspace = true }
+zip = { workspace = true }
 tx-core = { path = "../tx-core" }
 
+[dev-dependencies]
+wasm-bindgen-test = { workspace = true }
