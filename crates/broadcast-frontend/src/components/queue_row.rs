@@ -65,7 +65,12 @@ pub fn queue_row(props: &QueueRowProps) -> Html {
                         { retry_button(item.id, props.broadcasting, &props.on_retry) }
                     }
                 </div>
-                <button onclick={onclick_remove} style={remove_button_style()} class="remove-btn">{"×"}</button>
+                <button
+                    onclick={onclick_remove}
+                    disabled={props.broadcasting}
+                    style={remove_button_style(props.broadcasting)}
+                    class="remove-btn"
+                >{"×"}</button>
             </div>
 
             if queue::shows_input_value_field(item) {
@@ -131,9 +136,10 @@ fn retry_button_style(disabled: bool) -> String {
     )
 }
 
-fn remove_button_style() -> String {
+fn remove_button_style(disabled: bool) -> String {
+    let cursor = if disabled { "not-allowed" } else { "pointer" };
     format!(
-        "border:0;background:none;color:{TEXT_DISABLED};font-size:17px;line-height:1;cursor:pointer;padding:4px"
+        "border:0;background:none;color:{TEXT_DISABLED};font-size:17px;line-height:1;cursor:{cursor};padding:4px"
     )
 }
 

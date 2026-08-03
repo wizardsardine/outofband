@@ -28,6 +28,7 @@ pub fn app() -> Html {
                         parse_error={queue.parse_error.clone()}
                         on_submit={queue.on_submit.clone()}
                         on_clear={queue.on_clear.clone()}
+                        broadcasting={queue.broadcasting}
                         on_files={on_files}
                     />
                     if !queue.refused_psbts.is_empty() {

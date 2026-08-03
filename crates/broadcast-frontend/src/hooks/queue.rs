@@ -3,9 +3,8 @@ use std::rc::Rc;
 use gloo_timers::future::TimeoutFuture;
 use yew::prelude::*;
 
-use crate::hooks::file_load::LoadedFile;
-
 use crate::hooks::broadcast::{self, SubmitOutcome};
+use crate::hooks::file_load::LoadedFile;
 use crate::queue::{
     self, AnalyzeOutcome, NoteCard, NoteKind, QueueItem, QueueItemBody, SubmissionState,
 };
@@ -21,8 +20,7 @@ pub struct QueueHandle {
     pub parse_error: Option<String>,
     pub broadcasting: bool,
     /// Undismissed PSBTs refused because they cannot be finalized: (name,
-    /// reason). Non-empty opens the finalization modal; a later load
-    /// appends rather than replacing, so a refusal is never lost.
+    /// reason). Non-empty opens the finalization modal.
     pub refused_psbts: Vec<(String, String)>,
     pub on_raw_text: Callback<String>,
     pub on_submit: Callback<()>,
@@ -43,8 +41,8 @@ pub struct QueueHandle {
 /// than `UseStateHandle::set`. A dispatched action is applied against
 /// whatever the queue's state actually is when Yew processes it, not a
 /// snapshot captured by whoever dispatched it — so the broadcast loop
-/// (which can be mid-await for a long time) can never clobber an add,
-/// remove, or edit made by another callback while it's in flight.
+/// (which can be mid-await for a long time) can never clobber an add or
+/// edit made by another callback while it's in flight.
 #[derive(PartialEq)]
 struct QueueState {
     items: Vec<QueueItem>,
@@ -108,7 +106,6 @@ impl Reducible for QueueState {
     }
 }
 
-#[hook]
 #[derive(Default, PartialEq)]
 struct RefusedState(Vec<(String, String)>);
 
@@ -130,6 +127,7 @@ impl Reducible for RefusedState {
     }
 }
 
+#[hook]
 pub fn use_queue() -> QueueHandle {
     let items = use_reducer(|| QueueState {
         items: Vec::new(),
@@ -163,12 +161,11 @@ pub fn use_queue() -> QueueHandle {
             let mut queued = Vec::with_capacity(lines.len());
             let mut refused = Vec::new();
             for line in &lines {
-                match queue::analyze(
-                    0, queue::short_name(line), "pasted".to_string(), line) {
+                match queue::analyze(0, queue::short_name(line), "pasted".to_string(), line) {
                     AnalyzeOutcome::Queued(item) => queued.push(*item),
                     AnalyzeOutcome::UnfinalizablePsbt { name, reason } => {
-                            refused.push((name, reason))
-                        }
+                        refused.push((name, reason));
+                    }
                 }
             }
 
@@ -201,7 +198,11 @@ pub fn use_queue() -> QueueHandle {
         let items = items.clone();
         let raw_text = raw_text.clone();
         let parse_error = parse_error.clone();
+        let broadcasting = broadcasting.clone();
         Callback::from(move |()| {
+            if *broadcasting {
+                return;
+            }
             items.dispatch(QueueAction::Clear);
             raw_text.set(String::new());
             parse_error.set(None);
@@ -210,7 +211,12 @@ pub fn use_queue() -> QueueHandle {
 
     let on_remove = {
         let items = items.clone();
-        Callback::from(move |id: u64| items.dispatch(QueueAction::Remove(id)))
+        let broadcasting = broadcasting.clone();
+        Callback::from(move |id: u64| {
+            if !*broadcasting {
+                items.dispatch(QueueAction::Remove(id));
+            }
+        })
     };
 
     let on_set_total = {
@@ -316,8 +322,6 @@ pub fn use_queue() -> QueueHandle {
     }
 }
 
-/// Whether the run should keep going to the next queued id, or stop where
-/// it is because the current one needs the user's attention.
 fn analyze_loaded_file(
     name: String,
     bytes: &[u8],
@@ -350,6 +354,8 @@ fn analyze_loaded_file(
     }
 }
 
+/// Whether the run should keep going to the next queued id, or stop where
+/// it is because the current one needs the user's attention.
 enum RunOutcome {
     Continue,
     Paused,
@@ -362,14 +368,10 @@ enum RunOutcome {
 ///
 /// Every submission-state update goes through `items.dispatch`, which Yew
 /// applies against whatever the queue's live state is at that moment —
-/// never a snapshot this run captured earlier — so an add, remove, or edit
+/// never a snapshot this run captured earlier — so an add or edit
 /// made by another callback while this run is mid-await is never clobbered.
-/// The one exception is `local`, an immutable start-of-run snapshot used
-/// solely to look up each id's finalized hex before submitting it; a row
-/// can still be removed or already resolved between the moment a run is
-/// queued and the moment its turn comes up, which is accepted (see
-/// `submittable_tx_hex`) and unrelated to the write-side clobbering this
-/// design avoids.
+/// `local` is an immutable start-of-run snapshot used solely to look up
+/// each id's finalized hex before submitting it.
 async fn run_broadcast(
     items: UseReducerHandle<QueueState>,
     broadcasting: UseStateHandle<bool>,
@@ -388,9 +390,8 @@ async fn run_broadcast(
     broadcasting.set(false);
 }
 
-/// The item's finalized hex, if it's still in the queue and still
-/// submittable — a row can be removed or already resolved between the
-/// moment a run is queued and the moment its turn comes up.
+/// The item's finalized hex from the start-of-run snapshot, if it was
+/// submittable when the run began.
 fn submittable_tx_hex(items: &[QueueItem], id: u64) -> Option<String> {
     let item = items.iter().find(|item| item.id == id)?;
     if !item.is_submittable() {
@@ -510,4 +511,63 @@ fn set_submission(
         submission,
         note,
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::queue::RowFormat;
+
+    fn item(name: &str) -> QueueItem {
+        QueueItem::invalid(
+            0,
+            name.to_string(),
+            "test".to_string(),
+            RowFormat::Unknown,
+            "invalid".to_string(),
+        )
+    }
+
+    #[test]
+    fn extending_assigns_unique_ids_in_dispatch_order() {
+        let mut state = QueueState {
+            items: Vec::new(),
+            next_id: 0,
+        };
+
+        extend_with_ids(&mut state, vec![item("first"), item("second")]);
+        extend_with_ids(&mut state, vec![item("third")]);
+
+        assert_eq!(
+            state
+                .items
+                .iter()
+                .map(|item| (item.id, item.name.as_str()))
+                .collect::<Vec<_>>(),
+            vec![(0, "first"), (1, "second"), (2, "third")]
+        );
+    }
+
+    #[test]
+    fn refusals_accumulate_until_dismissed() {
+        let state = Rc::new(RefusedState::default()).reduce(RefusedAction::Extend(vec![(
+            "first".to_string(),
+            "reason one".to_string(),
+        )]));
+        let state = state.reduce(RefusedAction::Extend(vec![(
+            "second".to_string(),
+            "reason two".to_string(),
+        )]));
+
+        assert_eq!(
+            state.0,
+            vec![
+                ("first".to_string(), "reason one".to_string()),
+                ("second".to_string(), "reason two".to_string()),
+            ]
+        );
+
+        let state = state.reduce(RefusedAction::Clear);
+        assert!(state.0.is_empty());
+    }
 }

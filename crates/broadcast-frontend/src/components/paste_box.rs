@@ -22,6 +22,7 @@ pub struct PasteBoxProps {
     pub parse_error: Option<String>,
     pub on_submit: Callback<()>,
     pub on_clear: Callback<()>,
+    pub broadcasting: bool,
     pub on_files: Callback<web_sys::FileList>,
 }
 
@@ -210,7 +211,11 @@ pub fn paste_box(props: &PasteBoxProps) -> Html {
                 </button>
                 <span style={format!("font-size:12.5px;color:{TEXT_MUTED_6A}")}>{"Files, folders or archives: .txt .psbt .txn .tar .tar.gz .zip"}</span>
                 if props.has_items {
-                    <button onclick={onclick_clear} style={format!("border:0;background:none;color:{TEXT_MUTED_6A};font-family:inherit;font-size:13px;cursor:pointer;padding:14px 4px")}>{"Clear queue"}</button>
+                    <button
+                        onclick={onclick_clear}
+                        disabled={props.broadcasting}
+                        style={clear_button_style(props.broadcasting)}
+                    >{"Clear queue"}</button>
                 }
             </div>
 
@@ -251,5 +256,12 @@ fn textarea_style(drag_over: bool) -> String {
 fn choose_files_style() -> String {
     format!(
         "display:flex;align-items:center;gap:9px;border:1px solid {BORDER_STRONG};border-radius:2px;background:#000;color:{TEXT_SECONDARY};font-family:inherit;font-size:13px;padding:13px 18px;cursor:pointer"
+    )
+}
+
+fn clear_button_style(disabled: bool) -> String {
+    let cursor = if disabled { "not-allowed" } else { "pointer" };
+    format!(
+        "border:0;background:none;color:{TEXT_MUTED_6A};font-family:inherit;font-size:13px;cursor:{cursor};padding:14px 4px"
     )
 }
