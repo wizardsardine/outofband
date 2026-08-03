@@ -98,9 +98,11 @@ pub static STRINGS: Strings = Strings {
         transaction replacement.",
     faq_q_where: "Where does what I paste actually go?",
     faq_a_where: "Decoding, finalizing and fee maths all run in your browser, and this site has \
-        no server in the middle. The only thing that ever leaves this page (and your computer) is \
-        the finalized transaction hex, sent straight from your browser to MARA Slipstream when \
-        you press Send.",
+        no server in the middle. Two things leave this page: the finalized transaction hex, sent \
+        straight from your browser to MARA Slipstream when you press Send, and an anonymous page \
+        view counted by Plausible. Plausible sets no cookies and records nothing that identifies \
+        you, but, like MARA, it does see the IP address you connect from. Use Tor or a VPN if \
+        that matters to you. What you paste is never part of either.",
     faq_q_mara_learns: "What does MARA learn about me?",
     faq_a_mara_learns: "The transaction details, and your IP address. Your browser talks to MARA \
         directly, so the connection is yours and MARA sees the address you are browsing from. \

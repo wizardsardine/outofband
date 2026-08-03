@@ -101,9 +101,12 @@ pub static STRINGS: Strings = Strings {
         al resto de la red. Tardará más en minarse, pero estarás a salvo del reemplazo.",
     faq_q_where: "¿Adónde va realmente lo que pego?",
     faq_a_where: "La descodificación, la finalización y el cálculo de comisiones ocurren en tu \
-        navegador, y este sitio no tiene ningún servidor por medio. Lo único que sale de esta \
-        página (y de tu ordenador) es la transacción finalizada en hexadecimal, enviada \
-        directamente desde tu navegador a MARA Slipstream cuando pulsas Enviar.",
+        navegador, y este sitio no tiene ningún servidor por medio. De esta página salen dos \
+        cosas: la transacción finalizada en hexadecimal, enviada directamente desde tu navegador \
+        a MARA Slipstream cuando pulsas Enviar, y una visita anónima contada por Plausible. \
+        Plausible no pone cookies ni registra nada que te identifique, pero, igual que MARA, sí \
+        ve la dirección IP desde la que te conectas. Usa Tor o una VPN si eso te importa. Lo que \
+        pegas nunca forma parte de ninguna de las dos.",
     faq_q_mara_learns: "¿Qué averigua MARA sobre mí?",
     faq_a_mara_learns: "Los datos de la transacción y tu dirección IP. Tu navegador habla \
         directamente con MARA, así que la conexión es tuya y MARA ve la dirección desde la que \

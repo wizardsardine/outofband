@@ -103,9 +103,13 @@ pub static STRINGS: Strings = Strings {
         vous serez à l'abri du remplacement.",
     faq_q_where: "Où va réellement ce que je colle ?",
     faq_a_where: "Le décodage, la finalisation et le calcul des frais se font tous dans votre \
-        navigateur, et ce site n'a aucun serveur intermédiaire. La seule chose qui quitte cette \
-        page (et votre ordinateur) est la transaction finalisée en hexadécimal, envoyée \
-        directement de votre navigateur à MARA Slipstream quand vous appuyez sur Envoyer.",
+        navigateur, et ce site n'a aucun serveur intermédiaire. Deux choses quittent cette page : \
+        la transaction finalisée en hexadécimal, envoyée directement de votre navigateur à MARA \
+        Slipstream quand vous appuyez sur Envoyer, et une visite anonyme comptée par Plausible. \
+        Plausible ne dépose aucun cookie et n'enregistre rien qui vous identifie, mais, comme \
+        MARA, il voit l'adresse IP depuis laquelle vous vous connectez. Utilisez Tor ou un VPN si \
+        cela compte pour vous. Ce que vous collez ne fait jamais partie ni de l'une ni de \
+        l'autre.",
     faq_q_mara_learns: "Qu'apprend MARA à mon sujet ?",
     faq_a_mara_learns: "Le contenu de la transaction, et votre adresse IP. Votre navigateur \
         parle directement à MARA : la connexion est la vôtre et MARA voit l'adresse depuis \

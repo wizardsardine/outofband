@@ -3,8 +3,46 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Outofband — direct-to-miner broadcast</title>
+  <title>Outofband: direct-to-miner broadcast</title>
+  <meta name="description" content="Submit signed PSBTs and raw transactions straight to MARA Slipstream, so they are mined without ever entering the public mempool. Everything runs in your browser.">
+
+  <!-- Absolute URLs: a crawler fetching the card has no page context to
+       resolve a relative path against. Note that `--domain` at deploy time
+       does not rewrite these, so a deployment under another name has to edit
+       them by hand. -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Outofband">
+  <meta property="og:url" content="https://outofband.wizardsardine.com/">
+  <meta property="og:title" content="Outofband: direct-to-miner broadcast">
+  <meta property="og:description" content="Submit signed PSBTs and raw transactions straight to MARA Slipstream, so they are mined without ever entering the public mempool. Everything runs in your browser.">
+  <meta property="og:image" content="https://outofband.wizardsardine.com/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Get your transactions mined directly, without using the public mempool. For multisig, Miniscript and Liana users affected by the Coldcard security issue.">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Outofband: direct-to-miner broadcast">
+  <meta name="twitter:description" content="Submit signed PSBTs and raw transactions straight to MARA Slipstream, so they are mined without ever entering the public mempool. Everything runs in your browser.">
+  <meta name="twitter:image" content="https://outofband.wizardsardine.com/og.png">
+  <meta name="twitter:image:alt" content="Get your transactions mined directly, without using the public mempool. For multisig, Miniscript and Liana users affected by the Coldcard security issue.">
+
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="theme-color" content="#000000">
+
+  <!-- Privacy-friendly analytics by Plausible -->
+  <script async src="https://plausible.io/js/pa-VTAU30cKIBiQKO4k974iu.js"></script>
+  <script>
+    window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+    plausible.init()
+  </script>
+
   <link data-trunk rel="css" href="assets/style.css">
+  <link data-trunk rel="copy-file" href="assets/favicon.svg">
+  <link data-trunk rel="copy-file" href="assets/favicon-32.png">
+  <link data-trunk rel="copy-file" href="assets/apple-touch-icon.png">
+  <link data-trunk rel="copy-file" href="assets/og.png">
   <link data-trunk rel="copy-file" href="assets/fonts/ibm-plex-sans-200.woff2">
   <link data-trunk rel="copy-file" href="assets/fonts/ibm-plex-sans-300.woff2">
   <link data-trunk rel="copy-file" href="assets/fonts/ibm-plex-sans-400.woff2">

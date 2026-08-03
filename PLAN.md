@@ -512,13 +512,16 @@ outofband/
 │           ├── unpack.rs         # in-browser tar/tgz/zip extraction
 │           ├── components/       # one module per section of the page
 │           └── hooks/            # fee poll, file load, queue, breakpoint
-└── deploy/
-    ├── install.sh                # full bootstrap of a fresh Debian server
-    ├── update.sh                 # rebuild and reinstall the bundle
-    ├── clean.sh                  # remove everything install.sh created
-    ├── nginx/outofband.conf      # port-80 server wrapper
-    ├── nginx/outofband-app.conf  # managed routes, cache policy, logs
-    └── nginx/outofband-security-headers.conf
+├── deploy/
+│   ├── install.sh                # full bootstrap of a fresh Debian server
+│   ├── update.sh                 # rebuild and reinstall the bundle
+│   ├── clean.sh                  # remove everything install.sh created
+│   ├── nginx/outofband.conf      # port-80 server wrapper
+│   ├── nginx/outofband-app.conf  # managed routes, cache policy, logs
+│   └── nginx/outofband-security-headers.conf
+└── tools/social/                 # regenerates og.png and the raster icons
+    ├── og-template.html          #   the card, screenshotted at 1200x630
+    └── render.mjs                #   and the icons, from favicon.svg
 ```
 
 Workspace `Cargo.toml` conventions: `resolver = "3"` (edition 2024's
