@@ -95,7 +95,7 @@ async fn submit_tx_success() {
         .and(path("/api/transactions"))
         .respond_with(
             ResponseTemplate::new(200)
-                .set_body_string(r#"{"status":"success","message":"accepted"}"#),
+                .set_body_string(r#"{"status":"success","message":"accepted for MYCODE123"}"#),
         )
         .mount(&server)
         .await;
@@ -107,15 +107,18 @@ async fn submit_tx_success() {
         .expect("submission should succeed");
 
     assert_eq!(result.status, "success");
-    assert_eq!(result.message, "accepted");
+    assert_eq!(result.message, "accepted for <redacted>");
 }
 
 #[tokio::test]
-async fn submit_tx_400_client_code_required() {
+async fn submit_tx_requires_successful_http_status() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .and(path("/api/transactions"))
-        .respond_with(ResponseTemplate::new(400).set_body_string(CLIENT_CODE_REQUIRED_BODY))
+        .respond_with(
+            ResponseTemplate::new(500)
+                .set_body_string(r#"{"status":"success","message":"accepted"}"#),
+        )
         .mount(&server)
         .await;
 
@@ -123,57 +126,33 @@ async fn submit_tx_400_client_code_required() {
     let err = client
         .submit_tx("deadbeef")
         .await
-        .expect_err("400 client-code body should be a typed error");
-
-    match err {
-        SlipstreamError::ClientCode(message) => {
-            assert_eq!(
-                message,
-                "Client codes are currently required to submit transactions. \
-Contact us at foundation@mara.com for more information."
-            );
-        }
-        other => panic!("expected ClientCode error, got {other:?}"),
-    }
-}
-
-#[tokio::test]
-async fn transport_failure_is_the_network_variant() {
-    // Nothing is listening here: connection is refused immediately, no
-    // wiremock server needed.
-    let client = SlipstreamClient::new(&config("http://127.0.0.1:1".to_string(), ""));
-    let err = client
-        .rates()
-        .await
-        .expect_err("unreachable server should fail");
+        .expect_err("a successful body on HTTP 500 must fail");
 
     assert!(
-        matches!(err, SlipstreamError::Transport(_)),
-        "expected Transport, got {err:?}"
+        matches!(err, SlipstreamError::Http { status: 500, .. }),
+        "expected HTTP status mismatch, got {err:?}"
     );
 }
 
 #[tokio::test]
-async fn client_code_never_appears_in_error_output() {
-    let distinctive_code = "REDACT-ME-98765-DISTINCTIVE";
-    let client = SlipstreamClient::new(&config("http://127.0.0.1:1".to_string(), distinctive_code));
+async fn submit_tx_http_error_is_not_a_transaction_rejection() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/api/transactions"))
+        .respond_with(
+            ResponseTemplate::new(500)
+                .set_body_string(r#"{"status":"error","message":"upstream unavailable"}"#),
+        )
+        .mount(&server)
+        .await;
 
+    let client = SlipstreamClient::new(&config(server.uri(), "MYCODE123"));
     let err = client
-        .rates()
+        .submit_tx("deadbeef")
         .await
-        .expect_err("unreachable server should fail");
+        .expect_err("HTTP 500 must not become a transaction rejection");
 
-    let display = err.to_string();
-    let debug = format!("{err:?}");
-
-    assert!(
-        !display.contains(distinctive_code),
-        "Display leaked the client code: {display}"
-    );
-    assert!(
-        !debug.contains(distinctive_code),
-        "Debug leaked the client code: {debug}"
-    );
+    assert!(matches!(err, SlipstreamError::Http { status: 500, .. }));
 }
 
 #[tokio::test]
@@ -280,4 +259,70 @@ async fn json_special_characters_in_credential_do_not_leak_from_malformed_respon
     assert!(!display.contains(&encoded_client_code));
     assert!(!debug.contains(client_code));
     assert!(!debug.contains(&encoded_client_code));
+}
+
+#[tokio::test]
+async fn submit_tx_400_client_code_required() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/api/transactions"))
+        .respond_with(ResponseTemplate::new(400).set_body_string(CLIENT_CODE_REQUIRED_BODY))
+        .mount(&server)
+        .await;
+
+    let client = SlipstreamClient::new(&config(server.uri(), "MYCODE123"));
+    let err = client
+        .submit_tx("deadbeef")
+        .await
+        .expect_err("400 client-code body should be a typed error");
+
+    match err {
+        SlipstreamError::ClientCode(message) => {
+            assert_eq!(
+                message,
+                "Client codes are currently required to submit transactions. \
+Contact us at foundation@mara.com for more information."
+            );
+        }
+        other => panic!("expected ClientCode error, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn transport_failure_is_the_network_variant() {
+    // Nothing is listening here: connection is refused immediately, no
+    // wiremock server needed.
+    let client = SlipstreamClient::new(&config("http://127.0.0.1:1".to_string(), ""));
+    let err = client
+        .rates()
+        .await
+        .expect_err("unreachable server should fail");
+
+    assert!(
+        matches!(err, SlipstreamError::Transport(_)),
+        "expected Transport, got {err:?}"
+    );
+}
+
+#[tokio::test]
+async fn client_code_never_appears_in_error_output() {
+    let distinctive_code = "REDACT-ME-98765-DISTINCTIVE";
+    let client = SlipstreamClient::new(&config("http://127.0.0.1:1".to_string(), distinctive_code));
+
+    let err = client
+        .rates()
+        .await
+        .expect_err("unreachable server should fail");
+
+    let display = err.to_string();
+    let debug = format!("{err:?}");
+
+    assert!(
+        !display.contains(distinctive_code),
+        "Display leaked the client code: {display}"
+    );
+    assert!(
+        !debug.contains(distinctive_code),
+        "Debug leaked the client code: {debug}"
+    );
 }

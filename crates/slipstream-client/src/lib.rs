@@ -167,7 +167,7 @@ impl SlipstreamClient {
                 body: "could not parse submission response".to_string(),
             })?;
 
-        if parsed.status == "success" {
+        if status.is_success() && parsed.status == "success" {
             return Ok(SubmitResult {
                 status: parsed.status,
                 message: self.redact(&parsed.message),
@@ -178,6 +178,12 @@ impl SlipstreamClient {
         let message = self.redact(&parsed.message);
         if client_code_issue {
             return Err(SlipstreamError::ClientCode(message));
+        }
+        if !status.is_success() {
+            return Err(SlipstreamError::Http {
+                status: status.as_u16(),
+                body: message,
+            });
         }
         if parsed.status == "error" {
             return Err(SlipstreamError::Rejected(message));
