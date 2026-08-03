@@ -1,6 +1,8 @@
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
+use crate::hooks::use_lang;
+use crate::i18n::Strings;
 use crate::queue::{self, NoteCard, QueueItem, QueueItemBody, RowStatusView, SubmissionState};
 use crate::tokens::{
     ACCENT_TEAL_BRIGHT, BLOCK_EXPLORER_TX_URL, BODY_COPY, BORDER_STRONG, CARD_NESTED, FIELD_TEXT,
@@ -22,7 +24,9 @@ pub struct QueueRowProps {
 #[function_component(QueueRow)]
 pub fn queue_row(props: &QueueRowProps) -> Html {
     let item = &props.item;
-    let status = queue::row_status(item, props.floor);
+    let lang = use_lang().lang;
+    let t = lang.strings();
+    let status = queue::row_status(item, props.floor, lang);
     let accepted = matches!(item.submission, SubmissionState::Accepted);
 
     let row_style = format!(
@@ -62,7 +66,7 @@ pub fn queue_row(props: &QueueRowProps) -> Html {
                 <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px">
                     <span style={format!("font-size:12px;font-weight:500;color:{}", status.text_color)}>{status.label}</span>
                     if sendable {
-                        { send_button(item.id, props.broadcasting, &props.on_send, &item.submission) }
+                        { send_button(item.id, props.broadcasting, &props.on_send, &item.submission, t) }
                     }
                 </div>
                 <button
@@ -70,11 +74,11 @@ pub fn queue_row(props: &QueueRowProps) -> Html {
                     disabled={props.broadcasting}
                     style={remove_button_style(props.broadcasting)}
                     class="remove-btn"
-                >{"×"}</button>
+                 title={t.row_remove_title}>{"×"}</button>
             </div>
 
             if queue::shows_input_value_field(item) {
-                { value_field(item, &props.on_set_total) }
+                { value_field(item, &props.on_set_total, t) }
             }
 
             if let Some(note) = &item.note {
@@ -117,14 +121,15 @@ fn send_button(
     broadcasting: bool,
     on_send: &Callback<u64>,
     submission: &SubmissionState,
+    t: &Strings,
 ) -> Html {
     let onclick = {
         let on_send = on_send.clone();
         Callback::from(move |_| on_send.emit(id))
     };
     let label = match submission {
-        SubmissionState::Rejected(_) | SubmissionState::Failed(_) => "Retry",
-        _ => "Send",
+        SubmissionState::Rejected(_) | SubmissionState::Failed(_) => t.btn_retry,
+        _ => t.btn_send,
     };
     html! {
         <button
@@ -133,7 +138,7 @@ fn send_button(
             style={send_button_style(broadcasting)}
             class="primary-btn btn-stable"
         >
-            <span class="btn-sizer">{"Retry"}</span>
+            <span class="btn-sizer">{t.btn_retry}</span>
             <span>{label}</span>
         </button>
     }
@@ -198,7 +203,7 @@ fn fee_sub_line(item: &QueueItem) -> String {
     }
 }
 
-fn value_field(item: &QueueItem, on_set_total: &Callback<(u64, Option<u64>)>) -> Html {
+fn value_field(item: &QueueItem, on_set_total: &Callback<(u64, Option<u64>)>, t: &Strings) -> Html {
     let oninput = {
         let on_set_total = on_set_total.clone();
         let id = item.id;
@@ -215,9 +220,9 @@ fn value_field(item: &QueueItem, on_set_total: &Callback<(u64, Option<u64>)>) ->
     html! {
         <div style={value_field_wrap_style()}>
             <span style={format!("font-size:13px;color:{BODY_COPY};max-width:52ch;line-height:1.5")}>
-                {"This transaction's input amounts are not known, so the fee cannot be derived locally. Enter the total value being spent to check it before submitting."}
+                {t.row_missing_value}
             </span>
-            <input {oninput} placeholder="total input sats" style={value_field_input_style()} />
+            <input {oninput} placeholder={t.row_total_placeholder} style={value_field_input_style()} />
         </div>
     }
 }

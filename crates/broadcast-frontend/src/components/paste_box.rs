@@ -3,12 +3,22 @@ use wasm_bindgen::closure::Closure;
 use web_sys::{DragEvent, HtmlInputElement, HtmlTextAreaElement};
 use yew::prelude::*;
 
+use crate::hooks::use_lang;
+use crate::i18n::Strings;
 use crate::tokens::{
     self, ACCENT_TEAL, BODY_COPY, BORDER_STRONG, CARD_NESTED, FIELD_TEXT, NOTE_CARD_ERROR, PROSE,
     PROSE_SIZE, SURFACE_DRAG_OVER, SURFACE_PARSE_ERROR, TEXT_MUTED_6A, TEXT_SECONDARY,
 };
 
-const PLACEHOLDER: &str = "cHNidP8BAHECAAAAAf8Zj1...\n\nor\n\n02000000000101ef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a...\n\nor drop a file here";
+/// Sample data on the outside, translated connective tissue in between: a
+/// reader does not need "cHNidP8…" localised, but does need to be told a
+/// file can be dropped here.
+fn placeholder(t: &Strings) -> String {
+    let (or, drop) = (t.load_placeholder_or, t.load_placeholder_drop);
+    format!(
+        "cHNidP8BAHECAAAAAf8Zj1...\n\n{or}\n\n02000000000101ef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a...\n\n{drop}"
+    )
+}
 
 /// Advertises the accepted extensions in the file picker; detection itself
 /// is always by content, never by what the picker filtered on.
@@ -28,11 +38,13 @@ pub struct PasteBoxProps {
 
 #[function_component(PasteBox)]
 pub fn paste_box(props: &PasteBoxProps) -> Html {
+    let lang = use_lang().lang;
+    let t = lang.strings();
     // Same function on the same input as `use_queue`'s `on_submit`, so the
     // button's enabled state and what the submit path enforces cannot drift.
     let lines = tx_core::split_lines(&props.raw_text);
     let can_queue = crate::queue::paste_gate(&lines).allows_queueing();
-    let detected = crate::queue::detected_label(&lines);
+    let detected = crate::queue::detected_label(&lines, lang);
 
     let file_input_ref = use_node_ref();
     let drag_over = use_state(|| false);
@@ -169,9 +181,9 @@ pub fn paste_box(props: &PasteBoxProps) -> Html {
         <div style="padding:60px 0 0">
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:18px">
                 <div>
-                    <h2 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-.2px">{"Load transactions"}</h2>
+                    <h2 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-.2px">{t.load_heading}</h2>
                     <p style={format!("margin:8px 0 0;font-size:{PROSE_SIZE};line-height:1.55;color:{PROSE};max-width:70ch")}>
-                        {"Paste or drop signed PSBTs and raw transactions. Your browser sends each one straight to MARA Slipstream, which mines it without ever touching the public mempool."}
+                        {t.load_blurb}
                     </p>
                 </div>
                 <span style={format!("font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.6px;color:{TEXT_MUTED_6A}")}>{detected}</span>
@@ -182,7 +194,7 @@ pub fn paste_box(props: &PasteBoxProps) -> Html {
                 {oninput}
                 {onkeydown}
                 spellcheck="false"
-                placeholder={PLACEHOLDER}
+                placeholder={placeholder(t)}
                 style={textarea_style(*drag_over)}
             />
             <input
@@ -200,40 +212,40 @@ pub fn paste_box(props: &PasteBoxProps) -> Html {
                     disabled={!can_queue}
                     class={if can_queue { "primary-btn" } else { "" }}
                     style={tokens::primary_button_style(can_queue, 30)}
-                >{"Add to queue"}</button>
+                >{t.btn_add_to_queue}</button>
                 <button onclick={onclick_choose_files} style={choose_files_style()}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 16V4"></path>
                         <path d="m7 9 5-5 5 5"></path>
                         <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path>
                     </svg>
-                    {"Choose files"}
+                    {t.btn_choose_files}
                 </button>
-                <span style={format!("font-size:13.5px;color:{BODY_COPY}")}>{"Files, folders or archives: .txt .psbt .txn .tar .tar.gz .zip"}</span>
+                <span style={format!("font-size:13.5px;color:{BODY_COPY}")}>{t.load_accepts}</span>
                 if props.has_items {
                     <button
                         onclick={onclick_clear}
                         disabled={props.broadcasting}
                         style={clear_button_style(props.broadcasting)}
-                    >{"Clear queue"}</button>
+                    >{t.btn_clear_queue}</button>
                 }
             </div>
 
             if let Some(error) = &props.parse_error {
-                { parse_error_card(error) }
+                { parse_error_card(error, t) }
             }
         </div>
     }
 }
 
-fn parse_error_card(error: &str) -> Html {
+fn parse_error_card(error: &str, t: &Strings) -> Html {
     let (border, edge, text_color) = NOTE_CARD_ERROR;
     let style = format!(
         "margin-top:18px;border:1px solid {border};border-left:3px solid {edge};border-radius:2px;background:{SURFACE_PARSE_ERROR};padding:16px 20px"
     );
     html! {
         <div {style}>
-            <div style={format!("font-size:11.5px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:{edge}")}>{"Could not parse"}</div>
+            <div style={format!("font-size:11.5px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:{edge}")}>{t.parse_error_title}</div>
             <p style={format!("margin:7px 0 0;font-size:13.5px;line-height:1.55;color:{text_color};font-family:'IBM Plex Mono',monospace")}>{error.to_string()}</p>
         </div>
     }

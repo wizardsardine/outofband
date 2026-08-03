@@ -4,16 +4,12 @@ use gloo_timers::future::TimeoutFuture;
 use yew::prelude::*;
 
 use crate::hooks::file_load::LoadedFile;
+use crate::i18n::Lang;
 use crate::queue::{
     self, AnalyzeOutcome, NoteCard, NoteKind, QueueItem, QueueItemBody, SubmissionState,
 };
 use crate::slipstream::{self, SubmitOutcome};
 use crate::unpack;
-
-/// Shown once Slipstream has answered 429 past every retry: the browser, not
-/// the transaction, is what upstream is refusing.
-const RATE_LIMIT_EXHAUSTED: &str =
-    "Slipstream is rate limiting this browser. Wait a few minutes and send again.";
 
 /// The whole load-and-queue state: the paste box's text, the queued
 /// items, and the callbacks that mutate them. Centralized here so
@@ -150,7 +146,15 @@ impl Reducible for RefusedState {
 }
 
 #[hook]
-pub fn use_queue() -> QueueHandle {
+/// Takes the language so the notes it bakes into rows are written in it.
+///
+/// Row *status* and column headers re-render on a switch, because they are
+/// computed at render time. A note's text is not: it is stored on the item
+/// when the item is analyzed, so rows loaded before a switch keep the
+/// wording they were given. Making those reactive would mean storing a note
+/// kind rather than a string, and half of them are `tx-core` diagnostics
+/// that stay English either way.
+pub fn use_queue(lang: Lang) -> QueueHandle {
     let items = use_reducer(|| QueueState {
         items: Vec::new(),
         next_id: 0,
@@ -176,14 +180,14 @@ pub fn use_queue() -> QueueHandle {
         let refused_psbts = refused_psbts.clone();
         Callback::from(move |()| {
             let lines = tx_core::split_lines(&raw_text);
-            if let Some(refusal) = queue::paste_gate(&lines).refusal() {
+            if let Some(refusal) = queue::paste_gate(&lines).refusal(lang) {
                 parse_error.set(Some(refusal.to_string()));
                 return;
             }
             let mut queued = Vec::with_capacity(lines.len());
             let mut refused = Vec::new();
             for line in &lines {
-                match queue::analyze(0, queue::short_name(line), "pasted".to_string(), line) {
+                match queue::analyze(0, queue::short_name(line), "pasted".to_string(), line, lang) {
                     AnalyzeOutcome::Queued(item) => queued.push(*item),
                     AnalyzeOutcome::UnfinalizablePsbt { name, reason } => {
                         refused.push((name, reason));
@@ -211,11 +215,7 @@ pub fn use_queue() -> QueueHandle {
                     .iter()
                     .all(|item| item.txid().is_some_and(|txid| items.is_queued(txid)))
             {
-                let message = if queued.len() == 1 {
-                    "That transaction is already in the queue."
-                } else {
-                    "Those transactions are already in the queue."
-                };
+                let message = lang.strings().msg_duplicate.pick(lang, queued.len() as u64);
                 parse_error.set(Some(message.to_string()));
                 return;
             }
@@ -281,7 +281,14 @@ pub fn use_queue() -> QueueHandle {
             for file in files {
                 match file {
                     LoadedFile::Loaded { name, bytes } => {
-                        analyze_loaded_file(name, &bytes, &mut budget, &mut queued, &mut refused);
+                        analyze_loaded_file(
+                            name,
+                            &bytes,
+                            &mut budget,
+                            &mut queued,
+                            &mut refused,
+                            lang,
+                        );
                     }
                     LoadedFile::Failed { name, error } => queued.push(queue::unreadable_file(
                         0,
@@ -323,6 +330,7 @@ pub fn use_queue() -> QueueHandle {
                 items.clone(),
                 broadcasting.clone(),
                 ids,
+                lang,
             ));
         })
     };
@@ -339,6 +347,7 @@ pub fn use_queue() -> QueueHandle {
                 items.clone(),
                 broadcasting.clone(),
                 vec![id],
+                lang,
             ));
         })
     };
@@ -367,6 +376,7 @@ fn analyze_loaded_file(
     budget: &mut unpack::LoadBudget,
     queued: &mut Vec<QueueItem>,
     refused: &mut Vec<(String, String)>,
+    lang: Lang,
 ) {
     match unpack::unpack(&name, bytes, budget) {
         Ok(unpacked) => {
@@ -376,7 +386,7 @@ fn analyze_loaded_file(
                 "dropped file".to_string()
             };
             for item in unpacked {
-                match queue::analyze(0, item.label, origin.clone(), &item.text) {
+                match queue::analyze(0, item.label, origin.clone(), &item.text, lang) {
                     AnalyzeOutcome::Queued(queue_item) => queued.push(*queue_item),
                     AnalyzeOutcome::UnfinalizablePsbt { name, reason } => {
                         refused.push((name, reason));
@@ -420,13 +430,14 @@ async fn run_broadcast(
     items: UseReducerHandle<QueueState>,
     broadcasting: UseStateHandle<bool>,
     ids: Vec<u64>,
+    lang: Lang,
 ) {
     let local = items.items.clone();
     for id in ids {
         let Some(tx_hex) = submittable_tx_hex(&local, id) else {
             continue;
         };
-        match submit_with_rate_limit_retry(&items, id, &tx_hex).await {
+        match submit_with_rate_limit_retry(&items, id, &tx_hex, lang).await {
             RunOutcome::Continue => continue,
             RunOutcome::Paused => break,
         }
@@ -455,11 +466,12 @@ async fn submit_with_rate_limit_retry(
     items: &UseReducerHandle<QueueState>,
     id: u64,
     tx_hex: &str,
+    lang: Lang,
 ) -> RunOutcome {
     let mut attempt = 0;
     loop {
         set_submission(items, id, SubmissionState::Sending, NoteUpdate::Unchanged);
-        match slipstream::submit_tx(tx_hex).await {
+        match slipstream::submit_tx(tx_hex, lang).await {
             SubmitOutcome::Accepted => {
                 // Clears any leftover rate-limit countdown note from a
                 // 429 this same item recovered from.
@@ -482,10 +494,14 @@ async fn submit_with_rate_limit_retry(
             SubmitOutcome::Failed(message) => return fail_and_pause(items, id, message),
             SubmitOutcome::RateLimited(suggested) => {
                 let Some(delay_secs) = slipstream::retry_delay(attempt, suggested) else {
-                    return fail_and_pause(items, id, RATE_LIMIT_EXHAUSTED.to_string());
+                    return fail_and_pause(
+                        items,
+                        id,
+                        lang.strings().msg_rate_limited_note.to_string(),
+                    );
                 };
                 attempt += 1;
-                count_down_and_wait(items, id, delay_secs).await;
+                count_down_and_wait(items, id, delay_secs, lang).await;
                 // Loop back and retry the same item: a 429 means nothing was
                 // ever attempted against Slipstream for it.
             }
@@ -511,16 +527,21 @@ fn fail_and_pause(items: &UseReducerHandle<QueueState>, id: u64, message: String
 
 /// Marks the row `Rate limited` with a countdown note that ticks once per
 /// second, so the pause is visible rather than a silent stall.
-async fn count_down_and_wait(items: &UseReducerHandle<QueueState>, id: u64, delay_secs: u64) {
+async fn count_down_and_wait(
+    items: &UseReducerHandle<QueueState>,
+    id: u64,
+    delay_secs: u64,
+    lang: Lang,
+) {
     let mut remaining = delay_secs;
     loop {
         let text = if remaining == 0 {
-            "Rate limited, retrying now…".to_string()
+            lang.strings().msg_retrying_now.to_string()
         } else {
-            format!(
-                "Rate limited, retrying in {remaining} second{}…",
-                if remaining == 1 { "" } else { "s" }
-            )
+            lang.strings()
+                .msg_retrying_in
+                .pick(lang, remaining)
+                .replace("{n}", &remaining.to_string())
         };
         let note = NoteCard {
             kind: NoteKind::Warn,

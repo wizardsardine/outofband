@@ -709,6 +709,55 @@ this document and in code comments is unaffected. The one surviving `—` on
 the page is the fee card's placeholder for a rate it does not have yet,
 where it is a glyph standing in for a number rather than punctuation.
 
+### Languages
+
+The page carries six catalogues: English plus German, Spanish, French,
+Portuguese (Brazil) and Russian, the languages this tool's readership is
+most likely to want. `src/i18n/` holds one file each.
+
+`Strings` is a **struct of fields, not a map**. A missing translation is a
+compile error rather than a blank space a user finds; adding a string means
+adding a field, which will not build until all six have answered for it.
+
+Copy keeps its markup **inline** and `markup.rs` renders it: `*emphasis*`,
+`!warning!` (the `DO NOT` voice), and `[text](href)`. The alternative, one
+entry per fragment, forces every language into English word order. Emphasis
+styling stays at the call site, because the same `*text*` is white in the
+context banner and amber inside a warn card. An unclosed marker renders
+literally rather than swallowing the rest of the sentence.
+
+Russian is the only language needing three counted forms, so `Plurals`
+carries one/few/many/other and `Plurals::two` fills the redundant slots for
+the rest. French counts zero as singular. Only three messages are counted;
+everything else is written to avoid needing a plural at all.
+
+Language is chosen in this order: a stored choice, then
+`navigator.languages`, then English. An explicit choice outranks the
+browser because a reader who picked a language here meant it. The choice
+persists in `localStorage` under `outofband.lang`, and drives `<html lang>`
+and the tab title.
+
+**Unreviewed locales do not ship.** `Lang::reviewed` gates a language out
+of the switcher until a native speaker signs it off, and the switcher hides
+itself entirely while English is the only one left. This page tells people
+not to press a broadcast button; a mistranslation there costs someone their
+coins, so the machinery ships first and the languages light up one at a
+time. The five drafts in the tree were written by an LLM and are all marked
+unreviewed.
+
+Not translated, deliberately: format names and units (`PSBT · base64`,
+`sat/vB`, file extensions), which are identifiers; MARA's rejection text,
+which is their prose and paraphrasing a rejection is how a user solves the
+wrong problem; and `tx-core`'s decode diagnostics, which embed upstream
+library messages. The two structural failures a user can act on (no inputs,
+no outputs) are translated off the error variant instead.
+
+One known gap: a row's **note text** is written when the row is analyzed, so
+rows loaded before a language switch keep their old wording. Status labels
+and column headers re-render, because they are computed at render time.
+Making notes reactive would mean storing a note kind rather than a string,
+and half of them are `tx-core` diagnostics that stay English either way.
+
 ### Page structure (top to bottom)
 
 Disclosure strip: a sticky bar at the very top (`position:sticky; top:0;

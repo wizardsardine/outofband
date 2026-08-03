@@ -27,6 +27,12 @@ web-sys = { workspace = true, features = [
     "DataTransfer",
     "FileList",
     "File",
+    # i18n: the language <select>, plus the document/storage the choice is
+    # written to (<html lang>, the tab title, and localStorage).
+    "HtmlSelectElement",
+    "Document",
+    "Element",
+    "Storage",
 ] }
 serde = { workspace = true }
 serde_json = { workspace = true }

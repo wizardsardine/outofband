@@ -1,5 +1,6 @@
 use yew::prelude::*;
 
+use crate::hooks::use_t;
 use crate::tokens::{NOTE_CARD_WARN, TEXT_PRIMARY, WARNING};
 
 /// The disclosure is the first thing on the page and stays there: someone
@@ -9,6 +10,7 @@ use crate::tokens::{NOTE_CARD_WARN, TEXT_PRIMARY, WARNING};
 /// reads as an advisory and not as a nav bar.
 #[function_component(DisclosureStrip)]
 pub fn disclosure_strip() -> Html {
+    let t = use_t();
     let (border, _, _) = NOTE_CARD_WARN;
     let bar_style = format!(
         "position:sticky;top:0;z-index:20;background:#14100a;border-bottom:1px solid {border};box-shadow:0 1px 0 0 rgba(224,179,65,.18)"
@@ -33,10 +35,10 @@ pub fn disclosure_strip() -> Html {
                             <path d="M12 9v4"></path>
                             <path d="M12 17h.01"></path>
                         </svg>
-                        <span style={label_style}>{"Security disclosure"}</span>
+                        <span style={label_style}>{t.disclosure_label}</span>
                     </span>
                     <a class="disclosure-link" href="https://wizardsardine.com/blog/coldcard-rng-vulnerability/" target="_blank" rel="noopener noreferrer" style={link_style}>
-                        <span style={link_text_style}>{"Coldcard RNG vulnerability, and why you might need this tool"}</span>
+                        <span style={link_text_style}>{t.disclosure_link}</span>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none">
                             <path d="M7 17 17 7"></path>
                             <path d="M9 7h8v8"></path>

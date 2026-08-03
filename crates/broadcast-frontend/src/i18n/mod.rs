@@ -261,7 +261,6 @@ pub struct Strings {
     pub row_remove_title: &'static str,
     pub row_missing_value: &'static str,
     pub row_total_placeholder: &'static str,
-    pub row_check_fee: &'static str,
 
     // Row status
     pub status_invalid: &'static str,
@@ -310,7 +309,6 @@ pub struct Strings {
     pub msg_too_large: &'static str,
     pub msg_no_inputs: &'static str,
     pub msg_no_outputs: &'static str,
-    pub msg_not_finalizable: &'static str,
     pub msg_rate_limited_note: &'static str,
     pub msg_retrying_now: &'static str,
     pub msg_unreachable: &'static str,

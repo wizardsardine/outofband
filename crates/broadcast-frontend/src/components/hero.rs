@@ -2,6 +2,7 @@ use yew::prelude::*;
 
 use crate::components::fee_card::FeeCard;
 use crate::hooks::fee::FeeSnapshot;
+use crate::hooks::use_t;
 use crate::tokens::{
     BORDER_STRONG, HAIRLINE, HEADLINE_GRADIENT_TEAL, HEADLINE_GRADIENT_VIOLET, TEXT_SECONDARY,
 };
@@ -14,6 +15,7 @@ pub struct HeroProps {
 
 #[function_component(Hero)]
 pub fn hero(props: &HeroProps) -> Html {
+    let t = use_t();
     let grid_style = hero_grid_style(props.mobile);
     let h1_style = h1_style(props.mobile);
     let chip_style = format!(
@@ -30,9 +32,9 @@ pub fn hero(props: &HeroProps) -> Html {
         <div style={grid_style}>
             <div>
                 <h1 style={h1_style}>
-                    <span style={line_one_style}>{"Get your transactions"}</span>
+                    <span style={line_one_style}>{t.hero_line_one}</span>
                     <br />
-                    <span style={line_two_style}>{"mined directly, without using the public mempool."}</span>
+                    <span style={line_two_style}>{t.hero_line_two}</span>
                 </h1>
                 <div style="display:flex;flex-wrap:wrap;gap:9px;margin-top:32px">
                     <span style={chip_style.clone()}>{"PSBT · base64"}</span>

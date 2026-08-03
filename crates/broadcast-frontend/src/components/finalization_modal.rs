@@ -1,5 +1,6 @@
 use yew::prelude::*;
 
+use crate::hooks::use_t;
 use crate::tokens::{BODY_COPY, BORDER_STRONG, ERROR_RED, TEXT_MUTED_7B, TEXT_PRIMARY};
 
 /// PSBTs refused at load time because `tx-core` could not finalize them
@@ -14,6 +15,7 @@ pub struct FinalizationModalProps {
 
 #[function_component(FinalizationModal)]
 pub fn finalization_modal(props: &FinalizationModalProps) -> Html {
+    let t = use_t();
     let onclick_close = {
         let on_close = props.on_close.clone();
         Callback::from(move |_| on_close.emit(()))
@@ -23,15 +25,15 @@ pub fn finalization_modal(props: &FinalizationModalProps) -> Html {
         <div style={backdrop_style()}>
             <div style={card_style()}>
                 <div style={format!("font-size:17px;font-weight:600;letter-spacing:-.1px;color:{TEXT_PRIMARY}")}>
-                    {"PSBT cannot be finalized"}
+                    {t.modal_title}
                 </div>
                 <ul style="list-style:none;margin:18px 0;padding:0;display:flex;flex-direction:column;gap:10px">
                     { for props.refused.iter().map(refused_row) }
                 </ul>
                 <p style={format!("margin:0 0 22px;font-size:14.5px;line-height:1.55;color:{BODY_COPY}")}>
-                    {"Correct the PSBT, then load it again."}
+                    {t.modal_instruction}
                 </p>
-                <button onclick={onclick_close} style={close_button_style()}>{"Close"}</button>
+                <button onclick={onclick_close} style={close_button_style()}>{t.btn_close}</button>
             </div>
         </div>
     }

@@ -1,6 +1,8 @@
 use yew::prelude::*;
 
 use crate::hooks::fee::FeeSnapshot;
+use crate::hooks::use_t;
+use crate::i18n::{RichStyles, rich};
 use crate::tokens::{
     BORDER_STRONG, FEE_NUMBER_GRADIENT, NOTE_CARD_WARN, PROSE, PROSE_SIZE, RULE, TEXT_MUTED_7B,
     TEXT_SECONDARY, WARNING,
@@ -14,6 +16,7 @@ pub struct FeeCardProps {
 
 #[function_component(FeeCard)]
 pub fn fee_card(props: &FeeCardProps) -> Html {
+    let t = use_t();
     let stale = props.fee.as_ref().is_some_and(|snapshot| snapshot.stale);
     let display = match &props.fee {
         Some(snapshot) => format_rate(snapshot.rate_sat_vb),
@@ -38,11 +41,11 @@ pub fn fee_card(props: &FeeCardProps) -> Html {
     );
     let advice_text_style =
         format!("margin:0;font-size:14px;line-height:1.6;color:{note_text};text-wrap:pretty");
-    let advice_emphasis_style = format!("color:{WARNING};font-weight:600");
+    let advice_styles = RichStyles::new(format!("color:{WARNING};font-weight:600"), "");
 
     html! {
         <div style={card_style}>
-            <div style={eyebrow_style}>{"Minimum accepted fee rate"}</div>
+            <div style={eyebrow_style}>{t.fee_eyebrow}</div>
             <div style="display:flex;align-items:baseline;gap:14px;margin-top:12px">
                 <span style={num_style}>{display}</span>
                 <span style={unit_style}>{"sat/vB"}</span>
@@ -53,26 +56,17 @@ pub fn fee_card(props: &FeeCardProps) -> Html {
             // `submit_fee_rate` the card never shows (section 2 of PLAN.md).
             // Below this rate a transaction can still be accepted, and then
             // never mined — which is the whole reason to say so here.
-            <p style={sentence_style}>
-                {"Anything below this rate is not expected to be mined. Clearing it is not a \
-                  guarantee either."}
-            </p>
+            <p style={sentence_style}>{t.fee_sentence}</p>
             // Attached to the number, not to the advice below it: what may
             // be out of date is the figure on this card.
             if stale {
-                <p style={stale_note_style}>{"This rate may be out of date."}</p>
+                <p style={stale_note_style}>{t.fee_stale}</p>
             }
             // The floor is not a target. It moves while a transaction is
             // being built, so one pinned to the number shown at drafting
             // time can be under the floor by the time it is submitted.
             <div style={advice_card_style}>
-                <p style={advice_text_style}>
-                    {"This floor is "}
-                    <strong style={advice_emphasis_style.clone()}>{"dynamic"}</strong>
-                    {". It moves with demand, so build your transaction at a rate "}
-                    <strong style={advice_emphasis_style}>{"significantly higher"}</strong>
-                    {" than the floor, or it may stop clearing before it is mined."}
-                </p>
+                <p style={advice_text_style}>{ rich(t.fee_advice, &advice_styles) }</p>
             </div>
         </div>
     }

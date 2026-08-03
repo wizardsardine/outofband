@@ -70,7 +70,6 @@ pub static STRINGS: Strings = Strings {
     row_missing_value: "This transaction's input amounts are not known, so the fee cannot be \
         derived locally. Enter the total value being spent to check it before submitting.",
     row_total_placeholder: "Total input value (sats)",
-    row_check_fee: "Check fee",
 
     status_invalid: "Invalid",
     status_accepted: "Accepted",
@@ -137,7 +136,6 @@ pub static STRINGS: Strings = Strings {
     msg_too_large: "Transaction is {bytes} bytes as hex, over the {limit} MiB payload limit.",
     msg_no_inputs: "Transaction has no inputs.",
     msg_no_outputs: "Transaction has no outputs.",
-    msg_not_finalizable: "PSBT cannot be finalized.",
     msg_rate_limited_note: "Slipstream is rate limiting this browser. Wait a few minutes and send \
         again.",
     msg_retrying_now: "Rate limited, retrying now…",

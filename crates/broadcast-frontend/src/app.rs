@@ -4,17 +4,19 @@ use crate::components::{
     ContextBanner, DisclosureStrip, Faq, FinalizationModal, Footer, Hero, PasteBox, PrepareStep,
     QueueTable, StatStrip,
 };
-use crate::hooks::{use_fee, use_file_load, use_mobile, use_queue};
+use crate::hooks::{LangHandle, use_fee, use_file_load, use_lang_state, use_mobile, use_queue};
 
 #[function_component(App)]
 pub fn app() -> Html {
+    let lang = use_lang_state();
     let mobile = use_mobile();
     let fee = use_fee();
-    let queue = use_queue();
+    let queue = use_queue(lang.lang);
     let has_items = !queue.items.is_empty();
     let on_files = use_file_load(queue.on_files_loaded.clone());
 
     html! {
+        <ContextProvider<LangHandle> context={lang}>
         <div style="min-height:100vh;background:#000;color:#f4f4f4;font-family:'IBM Plex Sans',system-ui,sans-serif">
             <DisclosureStrip />
             <div style="padding:0 6%">
@@ -67,5 +69,6 @@ pub fn app() -> Html {
                 </div>
             </div>
         </div>
+        </ContextProvider<LangHandle>>
     }
 }

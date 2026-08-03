@@ -18,6 +18,21 @@ bundle and nothing else, so nothing pasted into the page ever reaches this
 project's host. See [Honest limitations](#honest-limitations) before
 relying on this for anything.
 
+## Languages
+
+Six catalogues live in `crates/broadcast-frontend/src/i18n/`, one file per
+language. `Strings` is a struct, so adding a string will not compile until
+every language has one; that is the point.
+
+Only English is offered today. The other five are LLM drafts marked
+unreviewed in `Lang::reviewed`, and the switcher hides a language until that
+flag flips. Flip it in the same commit that records who reviewed it. A
+mistranslated "do not press the broadcast button" costs someone their coins,
+which is the whole reason for the gate.
+
+To read a draft before it is signed off, flip its `reviewed` arm locally and
+`just run`.
+
 ## Development
 
 `just run` serves the page on `127.0.0.1:8080` over plain HTTP with `trunk

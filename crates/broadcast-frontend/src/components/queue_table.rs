@@ -2,6 +2,7 @@ use yew::prelude::*;
 
 use crate::components::queue_row::QueueRow;
 use crate::hooks::fee::FeeSnapshot;
+use crate::hooks::use_t;
 use crate::queue::QueueItem;
 use crate::tokens::{BORDER_STRONG, CARD_NESTED, QUEUE_ROW_COLUMNS, TEXT_MUTED_6A};
 
@@ -18,6 +19,7 @@ pub struct QueueTableProps {
 
 #[function_component(QueueTable)]
 pub fn queue_table(props: &QueueTableProps) -> Html {
+    let t = use_t();
     // Until the floor loads, compare against infinity: a row never reads
     // "Ready" before we actually know the rate it must clear.
     let floor = props
@@ -30,11 +32,11 @@ pub fn queue_table(props: &QueueTableProps) -> Html {
             if !props.mobile {
                 <div style={table_head_style()}>
                     <span></span>
-                    <span>{"Source"}</span>
-                    <span>{"Format"}</span>
-                    <span style="text-align:right">{"vsize"}</span>
-                    <span style="text-align:right">{"Fee rate"}</span>
-                    <span style="text-align:right">{"Status"}</span>
+                    <span>{t.col_source}</span>
+                    <span>{t.col_format}</span>
+                    <span style="text-align:right">{t.col_vsize}</span>
+                    <span style="text-align:right">{t.col_fee_rate}</span>
+                    <span style="text-align:right">{t.col_status}</span>
                     <span></span>
                 </div>
             }

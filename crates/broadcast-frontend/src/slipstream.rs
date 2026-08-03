@@ -5,6 +5,8 @@
 use gloo_net::http::{Request, Response};
 use serde::{Deserialize, Serialize};
 
+use crate::i18n::Lang;
+
 /// Overridable at build time so a deployment can point at another host.
 const BASE_URL: &str = match option_env!("SLIPSTREAM_BASE_URL") {
     Some(url) => url,
@@ -23,7 +25,6 @@ const MAX_RETRY_DELAY_SECS: u64 = 300;
 /// A rejected fetch is opaque by design: the browser reports CORS, DNS, TLS,
 /// an offline tab and a blocked request identically, so the copy names what
 /// usually causes one instead of repeating a message that says nothing.
-const UNREACHABLE: &str = "Could not reach MARA Slipstream. Check your connection, or whether a VPN, proxy, or browser extension is blocking slipstream.mara.com.";
 
 #[derive(Deserialize)]
 struct RatesResponse {
@@ -74,19 +75,19 @@ pub async fn fetch_rates() -> Option<f64> {
 
 /// `POST /api/transactions` with `{tx_hex}`. No client code is sent: it is
 /// optional upstream, and a browser has no secret to hold one in.
-pub async fn submit_tx(tx_hex: &str) -> SubmitOutcome {
+pub async fn submit_tx(tx_hex: &str, lang: Lang) -> SubmitOutcome {
     let url = format!("{BASE_URL}{SUBMIT_PATH}");
     let request = match Request::post(&url).json(&SubmitRequest { tx_hex }) {
         Ok(request) => request,
         Err(err) => return SubmitOutcome::Failed(err.to_string()),
     };
     let Ok(response) = request.send().await else {
-        return SubmitOutcome::Failed(UNREACHABLE.to_string());
+        return SubmitOutcome::Failed(lang.strings().msg_unreachable.to_string());
     };
     // An unreadable body lands on the unexpected-response arm of classify().
     let body = response.text().await.unwrap_or_default();
 
-    match classify(response.status(), &body) {
+    match classify(response.status(), &body, lang) {
         // classify() sees no headers, so the suggested delay is filled in here.
         SubmitOutcome::RateLimited(_) => SubmitOutcome::RateLimited(retry_after_secs(&response)),
         outcome => outcome,
@@ -95,12 +96,12 @@ pub async fn submit_tx(tx_hex: &str) -> SubmitOutcome {
 
 /// Slipstream's answer as a single outcome, pure so the whole ladder is
 /// testable without HTTP.
-fn classify(status: u16, body: &str) -> SubmitOutcome {
+fn classify(status: u16, body: &str, lang: Lang) -> SubmitOutcome {
     if status == TOO_MANY_REQUESTS {
         return SubmitOutcome::RateLimited(None);
     }
     let Ok(parsed) = serde_json::from_str::<SubmitResponse>(body) else {
-        return unexpected(status);
+        return unexpected(status, lang);
     };
 
     match (status, parsed.status.as_str()) {
@@ -108,14 +109,16 @@ fn classify(status: u16, body: &str) -> SubmitOutcome {
         (200..=299, "error") => SubmitOutcome::Rejected(parsed.message),
         (400..=499, _) => SubmitOutcome::Rejected(parsed.message),
         (500..=599, _) => SubmitOutcome::Failed(parsed.message),
-        _ => unexpected(status),
+        _ => unexpected(status, lang),
     }
 }
 
-fn unexpected(status: u16) -> SubmitOutcome {
-    SubmitOutcome::Failed(format!(
-        "Unexpected response from Slipstream (HTTP {status})"
-    ))
+fn unexpected(status: u16, lang: Lang) -> SubmitOutcome {
+    SubmitOutcome::Failed(
+        lang.strings()
+            .msg_unexpected_response
+            .replace("{status}", &status.to_string()),
+    )
 }
 
 /// `Retry-After` in seconds, when the browser exposes it at all. The HTTP-date
@@ -140,6 +143,9 @@ pub fn retry_delay(attempt: u32, suggested: Option<u64>) -> Option<u64> {
 mod tests {
     use super::*;
 
+    /// Behaviour, not wording: read the English catalogue directly.
+    const EN: Lang = Lang::En;
+
     /// The `/api/rates` body recorded live on 2026-08-02.
     const RATES_BODY: &str = r#"{"market_rate":2.0, "multiplier":2.0, "multiplier_discount_percent":0,
  "discounted_multiplier":2.0, "submit_fee_rate":2.0,
@@ -161,7 +167,8 @@ mod tests {
         assert_eq!(
             classify(
                 200,
-                r#"{"status":"success","message":"Transaction accepted"}"#
+                r#"{"status":"success","message":"Transaction accepted"}"#,
+                EN
             ),
             SubmitOutcome::Accepted
         );
@@ -170,7 +177,11 @@ mod tests {
     #[test]
     fn error_on_200_is_rejected() {
         assert_eq!(
-            classify(200, r#"{"status":"error","message":"fee rate too low"}"#),
+            classify(
+                200,
+                r#"{"status":"error","message":"fee rate too low"}"#,
+                EN
+            ),
             SubmitOutcome::Rejected("fee rate too low".to_string())
         );
     }
@@ -178,16 +189,16 @@ mod tests {
     #[test]
     fn recorded_400_body_is_rejected_with_its_message() {
         assert_eq!(
-            classify(400, REJECTION_BODY),
+            classify(400, REJECTION_BODY, EN),
             SubmitOutcome::Rejected(REJECTION_MESSAGE.to_string())
         );
     }
 
     #[test]
     fn too_many_requests_is_rate_limited_whatever_the_body() {
-        assert_eq!(classify(429, ""), SubmitOutcome::RateLimited(None));
+        assert_eq!(classify(429, "", EN), SubmitOutcome::RateLimited(None));
         assert_eq!(
-            classify(429, REJECTION_BODY),
+            classify(429, REJECTION_BODY, EN),
             SubmitOutcome::RateLimited(None)
         );
     }
@@ -197,7 +208,8 @@ mod tests {
         assert_eq!(
             classify(
                 503,
-                r#"{"status":"error","message":"upstream unavailable"}"#
+                r#"{"status":"error","message":"upstream unavailable"}"#,
+                EN
             ),
             SubmitOutcome::Failed("upstream unavailable".to_string())
         );
@@ -206,20 +218,32 @@ mod tests {
     #[test]
     fn unparseable_body_names_the_status() {
         assert_eq!(
-            classify(502, "<html>bad gateway</html>"),
-            SubmitOutcome::Failed("Unexpected response from Slipstream (HTTP 502)".to_string())
+            classify(502, "<html>bad gateway</html>", EN),
+            SubmitOutcome::Failed(
+                EN.strings()
+                    .msg_unexpected_response
+                    .replace("{status}", "502")
+            )
         );
         assert_eq!(
-            classify(200, ""),
-            SubmitOutcome::Failed("Unexpected response from Slipstream (HTTP 200)".to_string())
+            classify(200, "", EN),
+            SubmitOutcome::Failed(
+                EN.strings()
+                    .msg_unexpected_response
+                    .replace("{status}", "200")
+            )
         );
     }
 
     #[test]
     fn unknown_status_string_on_200_is_unexpected() {
         assert_eq!(
-            classify(200, r#"{"status":"queued","message":"waiting"}"#),
-            SubmitOutcome::Failed("Unexpected response from Slipstream (HTTP 200)".to_string())
+            classify(200, r#"{"status":"queued","message":"waiting"}"#, EN),
+            SubmitOutcome::Failed(
+                EN.strings()
+                    .msg_unexpected_response
+                    .replace("{status}", "200")
+            )
         );
     }
 

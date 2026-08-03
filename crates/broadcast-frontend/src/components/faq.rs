@@ -1,13 +1,16 @@
 use yew::prelude::*;
 
+use crate::hooks::use_t;
+use crate::i18n::{RichStyles, Strings, rich};
 use crate::tokens::{
     ACCENT_TEAL, BORDER_STRONG, HAIRLINE, PROSE, PROSE_SIZE, TEXT_MUTED_6A, TEXT_MUTED_7B,
 };
 
 #[function_component(Faq)]
 pub fn faq() -> Html {
+    let t = use_t();
     let open = use_state(|| None::<usize>);
-    let entries = entries();
+    let entries = entries(t);
     let last = entries.len() - 1;
 
     let eyebrow_style = format!(
@@ -19,7 +22,7 @@ pub fn faq() -> Html {
 
     html! {
         <div style="padding:76px 0 0">
-            <div style={eyebrow_style}>{"Questions you should ask before using this"}</div>
+            <div style={eyebrow_style}>{t.faq_eyebrow}</div>
             <div style={card_style}>
                 { for entries.into_iter().enumerate().map(|(index, (question, answer))| {
                     faq_entry(question, answer, index == last, index, &open)
@@ -72,86 +75,18 @@ fn faq_entry(
 /// Answers are `Html`, not `String`, so one can carry a link. Nothing here
 /// interpolates the live fee rate: the fee card owns that number, and the
 /// FAQ repeating it gave two places to read the same figure from.
-fn entries() -> Vec<(&'static str, Html)> {
+fn entries(t: &Strings) -> Vec<(&'static str, Html)> {
+    // Only the trust question is marked up, and only with a link, so the
+    // emphasis styles go unused here.
+    let styles = RichStyles::plain();
     vec![
-        (
-            "Why is this tool helpful?",
-            html! {
-                {"A normal transaction broadcast gossips your transaction to every Bitcoin node on \
-                  the network before it is mined. If someone holds a key that can also spend those \
-                  coins, they can replace the transaction and steal its coins before it gets \
-                  mined. Slipstream (what this tool uses) skips the gossip: the transaction goes \
-                  to one miner without being sent to the rest of the network. It will be slower to \
-                  mine, but you will be safe from transaction replacement."}
-            },
-        ),
-        (
-            "Where does what I paste actually go?",
-            html! {
-                {"Decoding, finalizing and fee maths all run in your browser, and this site has no \
-                  server in the middle. The only thing that ever leaves this page (and your \
-                  computer) is the finalized transaction hex, sent straight from your browser to \
-                  MARA Slipstream when you press Send."}
-            },
-        ),
-        (
-            "What does MARA learn about me?",
-            html! {
-                {"The transaction details, and your IP address. Your browser talks to MARA \
-                  directly, so the connection is yours and MARA sees the address you are browsing \
-                  from. MARA does not learn your PSBT metadata, your xpubs, your descriptor, or \
-                  which other transactions you queued here. Use Tor or a VPN if MARA seeing your \
-                  IP matters to you."}
-            },
-        ),
-        (
-            "Am I guaranteed to get my transaction mined?",
-            html! {
-                {"No. Accepted by Slipstream is not confirmed. MARA mines only a portion of \
-                  blocks, not all of them, and may drop your transaction for reasons it does not \
-                  have to explain. Treat this as a better chance, not a promise. If it has not \
-                  confirmed after a while (hours), retry."}
-            },
-        ),
-        (
-            "Why is the fee rate different from Mempool.space?",
-            html! {
-                {"Slipstream gets paid for the service through a higher fee rate. This website \
-                  does not take any share of the payment, or any compensation."}
-            },
-        ),
-        // "Will not get mined", not "is rejected": a parent under the
-        // displayed floor but over `submit_fee_rate` is accepted and then
-        // never mined (section 2 of PLAN.md), so only the mining claim holds
-        // for every low-fee parent a reader might have in mind.
-        (
-            "Can a second transaction pay the fee for a low-fee one (CPFP)?",
-            html! {
-                {"No. Slipstream looks at every transaction on its own, so one that does not pay \
-                  enough will not get mined here, even if you send another one paying extra to \
-                  cover it. You can still send several related transactions, as long as each pays \
-                  enough by itself: name the files 01, 02, 03 and they go out in that order. If you \
-                  need one transaction to pay for another, contact MARA directly."}
-            },
-        ),
-        (
-            "What are the risks of using this service?",
-            html! {
-                {"MARA, the company behind Slipstream, has to be trusted not to perform the attack \
-                  on your transaction itself. This is an acceptable risk compared to broadcasting \
-                  it publicly and letting ANYONE perform the attack."}
-            },
-        ),
-        (
-            "Why is this page on the Wizardsardine domain?",
-            html! {
-                <>
-                    {"We (Wizardsardine) are a security company, maintaining the Liana wallet ("}
-                    <a href="https://lianawallet.com" target="_blank" rel="noopener noreferrer">{"lianawallet.com"}</a>
-                    {"). Liana users did not have an easy way to broadcast to Slipstream before \
-                      this tool, so this is a service to them, open to the rest of the community."}
-                </>
-            },
-        ),
+        (t.faq_q_why, rich(t.faq_a_why, &styles)),
+        (t.faq_q_where, rich(t.faq_a_where, &styles)),
+        (t.faq_q_mara_learns, rich(t.faq_a_mara_learns, &styles)),
+        (t.faq_q_guaranteed, rich(t.faq_a_guaranteed, &styles)),
+        (t.faq_q_rate_differs, rich(t.faq_a_rate_differs, &styles)),
+        (t.faq_q_cpfp, rich(t.faq_a_cpfp, &styles)),
+        (t.faq_q_risks, rich(t.faq_a_risks, &styles)),
+        (t.faq_q_domain, rich(t.faq_a_domain, &styles)),
     ]
 }

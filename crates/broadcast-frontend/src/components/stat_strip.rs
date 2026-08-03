@@ -1,6 +1,7 @@
 use yew::prelude::*;
 
 use crate::hooks::fee::FeeSnapshot;
+use crate::hooks::use_lang;
 use crate::queue::{self, QueueItem};
 use crate::tokens::{
     self, ACCENT_TEAL_BRIGHT, BORDER_STRONG, ERROR_RED, RULE, TEXT_MUTED_7B, TEXT_PRIMARY,
@@ -29,8 +30,10 @@ pub fn stat_strip(props: &StatStripProps) -> Html {
         .filter(|item| item.is_submittable())
         .count();
     let disabled = submittable == 0 || props.broadcasting;
-    let label = queue::send_label(submittable, props.broadcasting);
-    let widest = queue::widest_send_label(submittable);
+    let lang = use_lang().lang;
+    let t = lang.strings();
+    let label = queue::send_label(submittable, props.broadcasting, lang);
+    let widest = queue::widest_send_label(submittable, lang);
 
     let onclick = {
         let on_broadcast = props.on_broadcast.clone();
@@ -39,10 +42,10 @@ pub fn stat_strip(props: &StatStripProps) -> Html {
 
     html! {
         <div style={strip_grid_style(props.mobile)}>
-            { stat_cell(0, props.mobile, "In queue", &stats.total.to_string(), TEXT_PRIMARY) }
-            { stat_cell(1, props.mobile, "Clear the floor", &stats.at_or_above_floor.to_string(), ACCENT_TEAL_BRIGHT) }
-            { stat_cell(2, props.mobile, "Below floor", &stats.below_floor.to_string(), ERROR_RED) }
-            { stat_cell(3, props.mobile, "Fee unknown", &stats.fee_unknown.to_string(), TEXT_SECONDARY) }
+            { stat_cell(0, props.mobile, t.stat_in_queue, &stats.total.to_string(), TEXT_PRIMARY) }
+            { stat_cell(1, props.mobile, t.stat_clear_floor, &stats.at_or_above_floor.to_string(), ACCENT_TEAL_BRIGHT) }
+            { stat_cell(2, props.mobile, t.stat_below_floor, &stats.below_floor.to_string(), ERROR_RED) }
+            { stat_cell(3, props.mobile, t.stat_fee_unknown, &stats.fee_unknown.to_string(), TEXT_SECONDARY) }
             <div style={cta_style(props.mobile)}>
                 <button
                     {onclick}

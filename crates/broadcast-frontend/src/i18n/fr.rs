@@ -76,7 +76,6 @@ pub static STRINGS: Strings = Strings {
         peuvent donc pas être calculés localement. Saisissez le montant total dépensé pour les \
         vérifier avant l'envoi.",
     row_total_placeholder: "Montant total en entrée (sats)",
-    row_check_fee: "Vérifier",
 
     status_invalid: "Invalide",
     status_accepted: "Acceptée",
@@ -146,7 +145,6 @@ pub static STRINGS: Strings = Strings {
         {limit} Mio.",
     msg_no_inputs: "La transaction n'a aucune entrée.",
     msg_no_outputs: "La transaction n'a aucune sortie.",
-    msg_not_finalizable: "La PSBT ne peut pas être finalisée.",
     msg_rate_limited_note: "Slipstream limite ce navigateur. Attendez quelques minutes puis \
         renvoyez.",
     msg_retrying_now: "Limitée, nouvelle tentative maintenant…",

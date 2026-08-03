@@ -75,7 +75,6 @@ pub static STRINGS: Strings = Strings {
         comisión no se puede calcular localmente. Introduce el valor total que se gasta para \
         comprobarla antes de enviar.",
     row_total_placeholder: "Valor total de entrada (sats)",
-    row_check_fee: "Comprobar",
 
     status_invalid: "No válida",
     status_accepted: "Aceptada",
@@ -142,7 +141,6 @@ pub static STRINGS: Strings = Strings {
         {limit} MiB.",
     msg_no_inputs: "La transacción no tiene entradas.",
     msg_no_outputs: "La transacción no tiene salidas.",
-    msg_not_finalizable: "La PSBT no se puede finalizar.",
     msg_rate_limited_note: "Slipstream está limitando a este navegador. Espera unos minutos y \
         vuelve a enviar.",
     msg_retrying_now: "Limitada, reintentando ahora…",

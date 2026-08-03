@@ -78,7 +78,6 @@ pub static STRINGS: Strings = Strings {
         não pode ser calculada localmente. Informe o valor total gasto para conferir antes de \
         enviar.",
     row_total_placeholder: "Valor total de entrada (sats)",
-    row_check_fee: "Conferir",
 
     status_invalid: "Inválida",
     status_accepted: "Aceita",
@@ -146,7 +145,6 @@ pub static STRINGS: Strings = Strings {
     msg_too_large: "A transação tem {bytes} bytes em hexadecimal e passa do limite de {limit} MiB.",
     msg_no_inputs: "A transação não tem entradas.",
     msg_no_outputs: "A transação não tem saídas.",
-    msg_not_finalizable: "A PSBT não pode ser finalizada.",
     msg_rate_limited_note: "A Slipstream está limitando este navegador. Espere alguns minutos e \
         envie de novo.",
     msg_retrying_now: "Limitada, tentando de novo agora…",

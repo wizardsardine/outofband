@@ -75,7 +75,6 @@ pub static STRINGS: Strings = Strings {
         sich die Gebühr lokal nicht berechnen. Geben Sie den insgesamt ausgegebenen Betrag ein, \
         um sie vor dem Senden zu prüfen.",
     row_total_placeholder: "Gesamter Eingangsbetrag (sats)",
-    row_check_fee: "Gebühr prüfen",
 
     status_invalid: "Ungültig",
     status_accepted: "Angenommen",
@@ -145,7 +144,6 @@ pub static STRINGS: Strings = Strings {
         {limit} MiB.",
     msg_no_inputs: "Transaktion hat keine Eingänge.",
     msg_no_outputs: "Transaktion hat keine Ausgänge.",
-    msg_not_finalizable: "PSBT kann nicht finalisiert werden.",
     msg_rate_limited_note: "Slipstream drosselt diesen Browser. Warten Sie einige Minuten und \
         senden Sie erneut.",
     msg_retrying_now: "Gedrosselt, neuer Versuch jetzt…",

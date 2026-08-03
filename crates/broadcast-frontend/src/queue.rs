@@ -3,8 +3,11 @@
 //! only shapes `tx-core`'s output for the queue table to render.
 
 use bitcoin::{Psbt, Transaction};
-use tx_core::{Decoded, FinalizeError, FinalizedPsbt, FloorComparison, Format, PsbtFee};
+use tx_core::{
+    Decoded, FinalizeError, FinalizedPsbt, FloorComparison, Format, PsbtFee, StructuralError,
+};
 
+use crate::i18n::Lang;
 use crate::tokens::{
     ACCENT_TEAL_BRIGHT, ERROR_RED, IN_FLIGHT, NOTE_CARD_ERROR, NOTE_CARD_WARN, TEXT_DISABLED,
     TEXT_MUTED_7B, TEXT_PRIMARY, WARNING,
@@ -97,15 +100,28 @@ const MAX_PAYLOAD_BYTES: usize = 1_048_576;
 
 /// `None` when `tx_hex` fits the payload cap; otherwise a displayable
 /// refusal reason.
-fn payload_cap_error(tx_hex: &str) -> Option<String> {
+fn payload_cap_error(tx_hex: &str, lang: Lang) -> Option<String> {
     if tx_hex.len() <= MAX_PAYLOAD_BYTES {
         return None;
     }
-    Some(format!(
-        "Transaction is {} bytes as hex, over the {} MiB payload limit.",
-        format_thousands(tx_hex.len() as i128),
-        MAX_PAYLOAD_BYTES / (1024 * 1024)
-    ))
+    let t = lang.strings();
+    Some(
+        t.msg_too_large
+            .replace("{bytes}", &format_thousands(tx_hex.len() as i128))
+            .replace("{limit}", &(MAX_PAYLOAD_BYTES / (1024 * 1024)).to_string()),
+    )
+}
+
+/// `tx-core` states structural failures in English. There are only two of
+/// them and both are things a user can act on, so they are translated off
+/// the variant rather than the message; every other `tx-core` error carries
+/// upstream library text and is passed through as-is.
+fn structural(err: StructuralError, lang: Lang) -> String {
+    let t = lang.strings();
+    match err {
+        StructuralError::NoInputs => t.msg_no_inputs.to_string(),
+        StructuralError::NoOutputs => t.msg_no_outputs.to_string(),
+    }
 }
 
 /// The result of analyzing one loaded entry (a pasted line, or an item
@@ -166,10 +182,6 @@ impl QueueItem {
     }
 }
 
-/// What an entry `tx-core` cannot sniff is labelled, both on its own queue
-/// row and on the paste box's inline card when nothing in a paste sniffs.
-const UNRECOGNISED_MESSAGE: &str = "Not valid base64 PSBT or hex transaction data.";
-
 /// Whether a paste may be queued, and if not, why.
 ///
 /// Single source of truth for the "Add to queue" button's enabled state,
@@ -194,10 +206,11 @@ impl PasteGate {
     }
 
     /// Text for the inline card when the paste is refused.
-    pub fn refusal(self) -> Option<&'static str> {
+    pub fn refusal(self, lang: Lang) -> Option<&'static str> {
+        let t = lang.strings();
         match self {
-            PasteGate::Empty => Some("Nothing pasted yet."),
-            PasteGate::NothingRecognised => Some(UNRECOGNISED_MESSAGE),
+            PasteGate::Empty => Some(t.msg_nothing_pasted),
+            PasteGate::NothingRecognised => Some(t.msg_unrecognised),
             PasteGate::Queueable => None,
         }
     }
@@ -219,7 +232,8 @@ pub fn paste_gate(lines: &[&str]) -> PasteGate {
 /// The mono read-out beside the heading, taken from the first entry that
 /// sniffs rather than the first entry, so it cannot contradict
 /// [`paste_gate`] on a paste whose leading entry is garbage.
-pub fn detected_label(lines: &[&str]) -> &'static str {
+pub fn detected_label(lines: &[&str], lang: Lang) -> &'static str {
+    let t = lang.strings();
     if lines.is_empty() {
         return "";
     }
@@ -227,9 +241,9 @@ pub fn detected_label(lines: &[&str]) -> &'static str {
         .iter()
         .find_map(|line| tx_core::detect(line.as_bytes()))
     {
-        Some(Format::PsbtBinary | Format::PsbtBase64) => "DETECTED · PSBT",
-        Some(Format::TxHex | Format::TxBinary) => "DETECTED · RAW TRANSACTION",
-        None => "UNRECOGNISED FORMAT",
+        Some(Format::PsbtBinary | Format::PsbtBase64) => t.detected_psbt,
+        Some(Format::TxHex | Format::TxBinary) => t.detected_raw,
+        None => t.detected_unrecognised,
     }
 }
 
@@ -243,7 +257,8 @@ pub fn unreadable_file(id: u64, name: String, origin: String, message: String) -
 
 /// Splits `text` (already one line from the paste box, or one item expanded
 /// from a file/archive) into an [`AnalyzeOutcome`], entirely via `tx-core`.
-pub fn analyze(id: u64, name: String, origin: String, text: &str) -> AnalyzeOutcome {
+pub fn analyze(id: u64, name: String, origin: String, text: &str, lang: Lang) -> AnalyzeOutcome {
+    let t = lang.strings();
     let bytes = text.as_bytes();
     match tx_core::detect(bytes) {
         None => AnalyzeOutcome::Queued(Box::new(QueueItem::invalid(
@@ -251,7 +266,7 @@ pub fn analyze(id: u64, name: String, origin: String, text: &str) -> AnalyzeOutc
             name,
             origin,
             RowFormat::Unknown,
-            UNRECOGNISED_MESSAGE.to_string(),
+            t.msg_unrecognised.to_string(),
         ))),
         Some(format) => {
             let row_format = row_format_for(format);
@@ -264,9 +279,9 @@ pub fn analyze(id: u64, name: String, origin: String, text: &str) -> AnalyzeOutc
                     capitalize(&err.to_string()),
                 ))),
                 Ok(Decoded::Transaction(tx)) => {
-                    AnalyzeOutcome::Queued(Box::new(from_transaction(id, name, origin, tx)))
+                    AnalyzeOutcome::Queued(Box::new(from_transaction(id, name, origin, tx, lang)))
                 }
-                Ok(Decoded::Psbt(psbt)) => from_psbt(id, name, origin, psbt),
+                Ok(Decoded::Psbt(psbt)) => from_psbt(id, name, origin, psbt, lang),
             }
         }
     }
@@ -279,18 +294,18 @@ fn row_format_for(format: Format) -> RowFormat {
     }
 }
 
-fn from_transaction(id: u64, name: String, origin: String, tx: Transaction) -> QueueItem {
+fn from_transaction(
+    id: u64,
+    name: String,
+    origin: String,
+    tx: Transaction,
+    lang: Lang,
+) -> QueueItem {
     if let Err(err) = tx_core::check_structure(&tx) {
-        return QueueItem::invalid(
-            id,
-            name,
-            origin,
-            RowFormat::RawTx,
-            capitalize(&err.to_string()),
-        );
+        return QueueItem::invalid(id, name, origin, RowFormat::RawTx, structural(err, lang));
     }
     let tx_hex = tx_core::serialize_hex(&tx);
-    if let Some(message) = payload_cap_error(&tx_hex) {
+    if let Some(message) = payload_cap_error(&tx_hex, lang) {
         return QueueItem::invalid(id, name, origin, RowFormat::RawTx, message);
     }
     let output_sum_sats = match tx_core::output_sum(&tx) {
@@ -323,7 +338,8 @@ fn from_transaction(id: u64, name: String, origin: String, tx: Transaction) -> Q
     }
 }
 
-fn from_psbt(id: u64, name: String, origin: String, psbt: Psbt) -> AnalyzeOutcome {
+fn from_psbt(id: u64, name: String, origin: String, psbt: Psbt, lang: Lang) -> AnalyzeOutcome {
+    let t = lang.strings();
     let output_sum = match tx_core::psbt_output_sum(&psbt) {
         Ok(output_sum) => output_sum,
         Err(err) => {
@@ -375,9 +391,10 @@ fn from_psbt(id: u64, name: String, origin: String, psbt: Psbt) -> AnalyzeOutcom
                     transaction,
                     Some(NoteCard {
                         kind: NoteKind::Warn,
-                        text: format!(
-                            "Missing UTXO data for {missing_utxo_inputs} input(s). Fee and final scripts could not be validated."
-                        ),
+                        text: t
+                            .msg_missing_utxo
+                            .pick(lang, missing_utxo_inputs as u64)
+                            .replace("{n}", &missing_utxo_inputs.to_string()),
                     }),
                 ),
             };
@@ -391,7 +408,7 @@ fn from_psbt(id: u64, name: String, origin: String, psbt: Psbt) -> AnalyzeOutcom
                 )));
             }
             let tx_hex = tx_core::serialize_hex(&tx);
-            if let Some(message) = payload_cap_error(&tx_hex) {
+            if let Some(message) = payload_cap_error(&tx_hex, lang) {
                 return AnalyzeOutcome::Queued(Box::new(QueueItem::invalid(
                     id,
                     name,
@@ -499,10 +516,11 @@ pub struct RowStatusView {
 
 /// The row's status dot and label. Driven by the submission outcome first,
 /// then the fee-vs-floor comparison — never a gate, only a read-out.
-pub fn row_status(item: &QueueItem, floor: f64) -> RowStatusView {
+pub fn row_status(item: &QueueItem, floor: f64, lang: Lang) -> RowStatusView {
+    let t = lang.strings();
     if item.is_invalid() {
         return RowStatusView {
-            label: "Invalid",
+            label: t.status_invalid,
             text_color: ERROR_RED,
             dot_color: ERROR_RED,
             pulsing: false,
@@ -510,50 +528,50 @@ pub fn row_status(item: &QueueItem, floor: f64) -> RowStatusView {
     }
     match &item.submission {
         SubmissionState::Accepted => RowStatusView {
-            label: "Accepted",
+            label: t.status_accepted,
             text_color: ACCENT_TEAL_BRIGHT,
             dot_color: ACCENT_TEAL_BRIGHT,
             pulsing: false,
         },
         SubmissionState::Sending => RowStatusView {
-            label: "Sending…",
+            label: t.status_sending,
             text_color: IN_FLIGHT,
             dot_color: IN_FLIGHT,
             pulsing: true,
         },
         SubmissionState::Rejected(_) => RowStatusView {
-            label: "Rejected",
+            label: t.status_rejected,
             text_color: ERROR_RED,
             dot_color: ERROR_RED,
             pulsing: false,
         },
         SubmissionState::RateLimited => RowStatusView {
-            label: "Rate limited",
+            label: t.status_rate_limited,
             text_color: WARNING,
             dot_color: WARNING,
             pulsing: false,
         },
         SubmissionState::Failed(_) => RowStatusView {
-            label: "Failed",
+            label: t.status_failed,
             text_color: ERROR_RED,
             dot_color: ERROR_RED,
             pulsing: false,
         },
         SubmissionState::Unsent => match tx_core::compare_to_floor(effective_rate(item), floor) {
             FloorComparison::Unknown => RowStatusView {
-                label: "Fee unknown",
+                label: t.status_fee_unknown,
                 text_color: TEXT_MUTED_7B,
                 dot_color: TEXT_DISABLED,
                 pulsing: false,
             },
             FloorComparison::AtOrAbove => RowStatusView {
-                label: "Ready",
+                label: t.status_ready,
                 text_color: ACCENT_TEAL_BRIGHT,
                 dot_color: ACCENT_TEAL_BRIGHT,
                 pulsing: false,
             },
             FloorComparison::Below => RowStatusView {
-                label: "Below floor",
+                label: t.status_below_floor,
                 text_color: ERROR_RED,
                 dot_color: ERROR_RED,
                 pulsing: false,
@@ -635,9 +653,9 @@ pub fn stats(items: &[QueueItem], floor: f64) -> QueueStats {
 /// Never describes the fee rates, only the run's shape.
 /// The widest label this button can show for a given count, used to
 /// reserve its width so it does not resize when the run starts.
-pub fn widest_send_label(submittable: usize) -> String {
-    let at_rest = send_label(submittable, false);
-    let in_flight = send_label(submittable, true);
+pub fn widest_send_label(submittable: usize, lang: Lang) -> String {
+    let at_rest = send_label(submittable, false, lang);
+    let in_flight = send_label(submittable, true, lang);
     if in_flight.chars().count() > at_rest.chars().count() {
         in_flight
     } else {
@@ -645,19 +663,24 @@ pub fn widest_send_label(submittable: usize) -> String {
     }
 }
 
-pub fn send_label(submittable: usize, in_flight: bool) -> String {
+pub fn send_label(submittable: usize, in_flight: bool, lang: Lang) -> String {
+    let t = lang.strings();
     if in_flight {
-        "Sending…".to_string()
+        t.btn_sending.to_string()
     } else if submittable > 1 {
-        format!("Send batch ({submittable})")
+        t.btn_send_batch.replace("{n}", &submittable.to_string())
     } else {
-        "Send".to_string()
+        t.btn_send.to_string()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Tests assert on behaviour, so they read the English catalogue
+    /// directly rather than whatever the page happens to be set to.
+    const EN: Lang = Lang::En;
 
     // Same fixture as tx-core's own `tests/fixtures/tx.hex`.
     const TX_HEX: &str = "0100000001a15d57094aa7a21a28cb20b59aab8fc7d1149a3bdbcddba9c622e4f5f6a99ece010000006c493046022100f93bb0e7d8db7bd46e40132d1f8242026e045f03a0efe71bbb8e3f475e970d790221009337cd7f1f929f00cc6ff01f03729b069a7c21b59b1736ddfee5db5946c5da8c0121033b9b137ee87d5a812d6f506efdd37f0affa7ffc310711c06c7f3e097c9447c52ffffffff0100e1f505000000001976a9140389035a9225b3839e2bbf32d826a1e222031fd888ac00000000";
@@ -682,7 +705,7 @@ mod tests {
     }
 
     fn analyze_queued(id: u64, name: &str, origin: &str, text: &str) -> QueueItem {
-        match analyze(id, name.to_string(), origin.to_string(), text) {
+        match analyze(id, name.to_string(), origin.to_string(), text, EN) {
             AnalyzeOutcome::Queued(item) => *item,
             AnalyzeOutcome::UnfinalizablePsbt { .. } => panic!("expected a queued row"),
         }
@@ -729,9 +752,12 @@ mod tests {
         let item = analyze_queued(1, "name", "origin", &tx_core::serialize_hex(&tx));
         assert!(item.is_invalid());
         assert!(matches!(item.format, RowFormat::RawTx));
+        // Against the catalogue, not a literal: the structural failures are
+        // translated off the variant now, so this checks the right variant
+        // was reported rather than how it currently reads.
         assert_eq!(
             item.note.expect("an invalid row states its reason").text,
-            "Transaction has no outputs"
+            EN.strings().msg_no_outputs
         );
     }
 
@@ -769,6 +795,7 @@ mod tests {
             "unsigned.psbt".to_string(),
             "pasted".to_string(),
             unsigned_psbt(),
+            EN,
         );
         match outcome {
             AnalyzeOutcome::UnfinalizablePsbt { name, reason } => {
@@ -786,10 +813,19 @@ mod tests {
 
         let mut item = analyze_queued(1, "final.psbt", "pasted", &psbt.to_string());
         assert!(matches!(item.format, RowFormat::Psbt));
+        // Compared against the catalogue rather than a literal: the point
+        // is that the count reached the message, not how the message is
+        // currently worded.
+        let note = &item.note.as_ref().expect("unchecked extraction warns").text;
         assert_eq!(
-            item.note.as_ref().expect("unchecked extraction warns").text,
-            "Missing UTXO data for 1 input(s). Fee and final scripts could not be validated."
+            note,
+            &EN.strings()
+                .msg_missing_utxo
+                .pick(EN, 1)
+                .replace("{n}", "1")
         );
+        assert!(note.contains('1'), "the count is missing: {note}");
+        assert!(!note.contains("{n}"), "placeholder left unreplaced: {note}");
         assert!(shows_input_value_field(&item));
 
         let output_sum_sats = match item.body {
@@ -826,10 +862,10 @@ mod tests {
     #[test]
     fn payload_cap_error_flags_oversized_hex() {
         let ok_hex = "00".repeat(1000);
-        assert!(payload_cap_error(&ok_hex).is_none());
+        assert!(payload_cap_error(&ok_hex, EN).is_none());
 
         let too_big_hex = "00".repeat(MAX_PAYLOAD_BYTES + 1);
-        assert!(payload_cap_error(&too_big_hex).is_some());
+        assert!(payload_cap_error(&too_big_hex, EN).is_some());
     }
 
     #[test]
@@ -868,20 +904,20 @@ mod tests {
         // Reserving this width is what stops the button resizing when a run
         // starts, so it must be at least as wide as either state.
         for submittable in [0, 1, 2, 9, 10, 999] {
-            let widest = widest_send_label(submittable).chars().count();
-            assert!(widest >= send_label(submittable, false).chars().count());
-            assert!(widest >= send_label(submittable, true).chars().count());
+            let widest = widest_send_label(submittable, EN).chars().count();
+            assert!(widest >= send_label(submittable, false, EN).chars().count());
+            assert!(widest >= send_label(submittable, true, EN).chars().count());
         }
-        assert_eq!(widest_send_label(1), "Sending…");
-        assert_eq!(widest_send_label(4), "Send batch (4)");
+        assert_eq!(widest_send_label(1, EN), "Sending…");
+        assert_eq!(widest_send_label(4, EN), "Send batch (4)");
     }
 
     #[test]
     fn send_label_names_the_batch_only_when_there_is_one() {
-        assert_eq!(send_label(0, false), "Send");
-        assert_eq!(send_label(1, false), "Send");
-        assert_eq!(send_label(4, false), "Send batch (4)");
-        assert_eq!(send_label(4, true), "Sending…");
+        assert_eq!(send_label(0, false, EN), "Send");
+        assert_eq!(send_label(1, false, EN), "Send");
+        assert_eq!(send_label(4, false, EN), "Send batch (4)");
+        assert_eq!(send_label(4, true, EN), "Sending…");
     }
 
     #[test]
@@ -907,16 +943,16 @@ mod tests {
         let below = decoded_item(100, Some(100)); // 1 sat/vB
         let unknown = decoded_item(100, None);
 
-        assert_eq!(row_status(&above, floor).label, "Ready");
+        assert_eq!(row_status(&above, floor, EN).label, "Ready");
         assert_eq!(rate_color(&above, floor), TEXT_PRIMARY);
 
-        assert_eq!(row_status(&at, floor).label, "Ready");
+        assert_eq!(row_status(&at, floor, EN).label, "Ready");
         assert_eq!(rate_color(&at, floor), TEXT_PRIMARY);
 
-        assert_eq!(row_status(&below, floor).label, "Below floor");
+        assert_eq!(row_status(&below, floor, EN).label, "Below floor");
         assert_eq!(rate_color(&below, floor), ERROR_RED);
 
-        assert_eq!(row_status(&unknown, floor).label, "Fee unknown");
+        assert_eq!(row_status(&unknown, floor, EN).label, "Fee unknown");
         assert_eq!(rate_color(&unknown, floor), TEXT_DISABLED);
     }
 
@@ -928,14 +964,14 @@ mod tests {
     }
 
     fn label_of(raw: &str) -> &'static str {
-        detected_label(&tx_core::split_lines(raw))
+        detected_label(&tx_core::split_lines(raw), EN)
     }
 
     #[test]
     fn paste_gate_is_empty_for_blank_and_comment_only_input() {
         for raw in ["", "   ", "\n\t\n  ", "# note", "# a\n\n#b\n"] {
             assert_eq!(gate_of(raw), PasteGate::Empty, "input {raw:?}");
-            assert_eq!(gate_of(raw).refusal(), Some("Nothing pasted yet."));
+            assert_eq!(gate_of(raw).refusal(EN), Some("Nothing pasted yet."));
             assert!(!gate_of(raw).allows_queueing());
         }
     }
@@ -950,7 +986,7 @@ mod tests {
             assert_eq!(gate_of(raw), PasteGate::NothingRecognised, "input {raw:?}");
             assert!(!gate_of(raw).allows_queueing());
             assert_eq!(
-                gate_of(raw).refusal(),
+                gate_of(raw).refusal(EN),
                 Some("Not valid base64 PSBT or hex transaction data.")
             );
         }
@@ -963,7 +999,7 @@ mod tests {
         for raw in [TX_HEX, &leading_garbage, &trailing_garbage] {
             assert_eq!(gate_of(raw), PasteGate::Queueable, "input {raw:?}");
             assert!(gate_of(raw).allows_queueing());
-            assert_eq!(gate_of(raw).refusal(), None);
+            assert_eq!(gate_of(raw).refusal(EN), None);
         }
     }
 
@@ -971,7 +1007,10 @@ mod tests {
     fn paste_gate_refusal_matches_the_invalid_row_note() {
         let row = analyze_queued(1, "name", "origin", "garbage");
         let note = row.note.expect("garbage is noted on its row").text;
-        assert_eq!(PasteGate::NothingRecognised.refusal(), Some(note.as_str()));
+        assert_eq!(
+            PasteGate::NothingRecognised.refusal(EN),
+            Some(note.as_str())
+        );
     }
 
     #[test]

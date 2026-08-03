@@ -78,7 +78,6 @@ pub static STRINGS: Strings = Strings {
     row_missing_value: "Суммы входов этой транзакции неизвестны, поэтому комиссию нельзя \
         вычислить локально. Введите общую расходуемую сумму, чтобы проверить её перед отправкой.",
     row_total_placeholder: "Общая сумма входов (sats)",
-    row_check_fee: "Проверить",
 
     status_invalid: "Недействительна",
     status_accepted: "Принята",
@@ -148,7 +147,6 @@ pub static STRINGS: Strings = Strings {
     msg_too_large: "Транзакция занимает {bytes} байт в hex и превышает предел в {limit} МиБ.",
     msg_no_inputs: "У транзакции нет входов.",
     msg_no_outputs: "У транзакции нет выходов.",
-    msg_not_finalizable: "PSBT нельзя финализировать.",
     msg_rate_limited_note: "Slipstream ограничивает этот браузер. Подождите несколько минут и \
         отправьте снова.",
     msg_retrying_now: "Ограничение, повтор сейчас…",
