@@ -2,6 +2,7 @@ mod config;
 mod rate_limit;
 mod routes;
 
+use std::net::SocketAddr;
 use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
@@ -36,11 +37,14 @@ async fn main() -> ExitCode {
         config.broadcast_api.rate_limit_max_tx,
     );
 
-    let app = router(AppState {
-        slipstream,
-        fee_cache,
-        rate_limiter,
-    });
+    let app = router(
+        AppState {
+            slipstream,
+            fee_cache,
+            rate_limiter,
+        },
+        config.broadcast_api.max_payload_bytes,
+    );
 
     let listener = match tokio::net::TcpListener::bind(config.broadcast_api.listen_addr).await {
         Ok(listener) => listener,
@@ -57,7 +61,12 @@ async fn main() -> ExitCode {
         "broadcast-api: listening on {}",
         config.broadcast_api.listen_addr
     );
-    if let Err(err) = axum::serve(listener, app).await {
+    if let Err(err) = axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    {
         eprintln!("broadcast-api: server error: {err}");
         return ExitCode::FAILURE;
     }
