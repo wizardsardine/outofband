@@ -8,3 +8,11 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+yew = { workspace = true }
+wasm-bindgen = { workspace = true }
+gloo-net = { workspace = true }
+gloo-timers = { workspace = true, features = ["futures"] }
+wasm-bindgen-futures = { workspace = true }
+web-sys = { workspace = true, features = ["MediaQueryList", "MediaQueryListEvent", "Window"] }
+serde = { workspace = true }
+

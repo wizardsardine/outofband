@@ -1,0 +1,17 @@
+[build]
+filehash = false
+
+# Reachable from the local network. Only the dev server binds publicly; the
+# backend stays on loopback and is reached through the proxies below, so the
+# rate limiter can still trust the forwarded-for headers it is given.
+[serve]
+address = "0.0.0.0"
+
+[[proxy]]
+backend = "http://127.0.0.1:3010/fee"
+
+[[proxy]]
+backend = "http://127.0.0.1:3010/broadcast"
+
+[[proxy]]
+backend = "http://127.0.0.1:3010/health"

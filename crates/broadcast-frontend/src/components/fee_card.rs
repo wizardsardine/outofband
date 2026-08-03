@@ -1,0 +1,84 @@
+use yew::prelude::*;
+
+use crate::hooks::fee::FeeSnapshot;
+use crate::tokens::{
+    BODY_COPY, BORDER_STRONG, FEE_NUMBER_GRADIENT, RULE, TEXT_MUTED_7B, TEXT_SECONDARY, WARNING,
+};
+
+#[derive(Properties, PartialEq)]
+pub struct FeeCardProps {
+    pub mobile: bool,
+    pub fee: Option<FeeSnapshot>,
+}
+
+#[function_component(FeeCard)]
+pub fn fee_card(props: &FeeCardProps) -> Html {
+    let stale = props.fee.as_ref().is_some_and(|snapshot| snapshot.stale);
+    let display = match &props.fee {
+        Some(snapshot) => format_rate(snapshot.rate_sat_vb),
+        None => "—".to_string(),
+    };
+
+    let card_style = fee_card_style(props.mobile);
+    let num_style = fee_num_style(props.mobile, stale);
+    let eyebrow_style = format!(
+        "font-size:12px;font-weight:500;letter-spacing:1.6px;text-transform:uppercase;color:{TEXT_MUTED_7B}"
+    );
+    let unit_style =
+        format!("font-family:'IBM Plex Mono',monospace;font-size:22px;color:{TEXT_SECONDARY}");
+    let rule_style = format!("height:1px;background:{RULE};margin:26px 0 20px");
+    let sentence_style =
+        format!("margin:0;font-size:14px;line-height:1.6;color:{BODY_COPY};text-wrap:pretty");
+    let stale_note_style =
+        format!("margin:10px 0 0;font-size:12.5px;line-height:1.5;color:{WARNING}");
+
+    html! {
+        <div style={card_style}>
+            <div style={eyebrow_style}>{"Minimum accepted fee rate"}</div>
+            <div style="display:flex;align-items:baseline;gap:14px;margin-top:12px">
+                <span style={num_style}>{display}</span>
+                <span style={unit_style}>{"sat/vB"}</span>
+            </div>
+            <div style={rule_style}></div>
+            <p style={sentence_style}>{"Anything below this rate will not be mined."}</p>
+            if stale {
+                <p style={stale_note_style}>{"This rate may be out of date."}</p>
+            }
+        </div>
+    }
+}
+
+fn fee_card_style(mobile: bool) -> String {
+    let padding = if mobile {
+        "26px 24px 24px"
+    } else {
+        "36px 38px 32px"
+    };
+    format!(
+        "border:1px solid {BORDER_STRONG};border-radius:44px 2px 44px 2px;background:#0c0c0c;box-shadow:2px 4px 10px 0 rgba(0,0,0,.15);padding:{padding}"
+    )
+}
+
+fn fee_num_style(mobile: bool, stale: bool) -> String {
+    let size = if mobile {
+        "font-size:76px;letter-spacing:-2px"
+    } else {
+        "font-size:124px;letter-spacing:-4px"
+    };
+    let opacity = if stale { "opacity:.5;" } else { "" };
+    format!(
+        "font-family:'IBM Plex Mono',monospace;font-weight:700;line-height:.86;background:{FEE_NUMBER_GRADIENT};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;{opacity}{size}"
+    )
+}
+
+fn format_rate(rate: f64) -> String {
+    if rate.fract() == 0.0 {
+        format!("{rate:.0}")
+    } else {
+        let formatted = format!("{rate:.2}");
+        formatted
+            .trim_end_matches('0')
+            .trim_end_matches('.')
+            .to_string()
+    }
+}

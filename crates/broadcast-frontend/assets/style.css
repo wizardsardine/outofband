@@ -1,0 +1,22 @@
+@font-face { font-family: 'IBM Plex Sans'; src: url("ibm-plex-sans-200.woff2") format('woff2'); font-weight: 200; font-style: normal; font-display: swap; }
+@font-face { font-family: 'IBM Plex Sans'; src: url("ibm-plex-sans-300.woff2") format('woff2'); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: 'IBM Plex Sans'; src: url("ibm-plex-sans-400.woff2") format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'IBM Plex Sans'; src: url("ibm-plex-sans-400-italic.woff2") format('woff2'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'IBM Plex Sans'; src: url("ibm-plex-sans-500.woff2") format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'IBM Plex Sans'; src: url("ibm-plex-sans-600.woff2") format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: 'IBM Plex Sans'; src: url("ibm-plex-sans-700.woff2") format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+
+@font-face { font-family: 'IBM Plex Mono'; src: url("ibm-plex-mono-300.woff2") format('woff2'); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: 'IBM Plex Mono'; src: url("ibm-plex-mono-400.woff2") format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'IBM Plex Mono'; src: url("ibm-plex-mono-500.woff2") format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'IBM Plex Mono'; src: url("ibm-plex-mono-600.woff2") format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: 'IBM Plex Mono'; src: url("ibm-plex-mono-700.woff2") format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+
+html, body { margin: 0; background: #000; -webkit-font-smoothing: antialiased; }
+a { color: #b0def0; text-decoration: none; }
+a:hover { color: #5fe7e4; }
+textarea::placeholder, input::placeholder { color: #454545; }
+textarea:focus, input:focus { outline: none; border-color: #5fe7e4; }
+button { transition: all .2s ease-in-out; }
+
+@keyframes wspulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
