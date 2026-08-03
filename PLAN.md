@@ -757,6 +757,15 @@ by origin (`extracted from recovery-batch.tar.gz`, `dropped file`,
 `pasted`). An item whose hex exceeds the 1 MiB payload cap is flagged
 `Invalid` at once, with its size and the cap in the reason.
 
+A transaction already in the queue is never added twice. The same hex
+reaches the queue easily by accident: pasted again, present in two
+archives, or a file dropped a second time. Duplicates are matched on the
+locally derived txid, so a re-encoded PSBT of an already-queued
+transaction is caught too, and the first row wins. Pasting one is
+reported inline ("That transaction is already in the queue.") rather than
+silently clearing the box. `Invalid` rows carry no txid and so never
+count as duplicates of each other.
+
 Queue summary: a four-cell stat strip — "In queue" (total, default text),
 "Clear the floor" (teal `#61ffe1`), "Below floor" (red `#ef445f`), "Fee
 unknown" (muted `#a1a1a1`) — each an 11px uppercase eyebrow over a

@@ -147,6 +147,16 @@ impl QueueItem {
         matches!(self.body, QueueItemBody::Invalid)
     }
 
+    /// The locally derived txid, for rows that decoded. `None` for an
+    /// `Invalid` row, which has no transaction and so can never duplicate
+    /// another.
+    pub fn txid(&self) -> Option<&str> {
+        match &self.body {
+            QueueItemBody::Decoded { txid, .. } => Some(txid),
+            QueueItemBody::Invalid => None,
+        }
+    }
+
     /// Every row that decoded successfully and has not already been
     /// accepted or is not already in flight — whatever its fee rate.
     pub fn is_submittable(&self) -> bool {

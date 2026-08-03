@@ -54,8 +54,24 @@ struct QueueState {
     next_id: u64,
 }
 
+impl QueueState {
+    /// Whether a transaction with this txid is already queued.
+    fn is_queued(&self, txid: &str) -> bool {
+        self.items.iter().any(|item| item.txid() == Some(txid))
+    }
+}
+
+/// Appends rows, skipping any transaction already queued. The same hex can
+/// reach here twice easily: pasted again, present in two archives, or a
+/// file dropped a second time. Two rows for one transaction would submit it
+/// twice and show two outcomes for one txid, so the first one wins.
+/// Duplicates are matched on the locally derived txid, which means a
+/// re-encoded PSBT of an already-queued transaction is caught too.
 fn extend_with_ids(state: &mut QueueState, new_items: Vec<QueueItem>) {
     for mut item in new_items {
+        if item.txid().is_some_and(|txid| state.is_queued(txid)) {
+            continue;
+        }
         item.id = state.next_id;
         state.next_id += 1;
         state.items.push(item);
@@ -183,6 +199,23 @@ pub fn use_queue() -> QueueHandle {
             if refused.is_empty() && queued.len() == 1 && queued[0].is_invalid() {
                 let error = queued[0].note.as_ref().map(|note| note.text.clone());
                 parse_error.set(error);
+                return;
+            }
+
+            // Pasting something already queued would otherwise clear the box
+            // and appear to do nothing, since the reducer drops the duplicate.
+            if refused.is_empty()
+                && !queued.is_empty()
+                && queued
+                    .iter()
+                    .all(|item| item.txid().is_some_and(|txid| items.is_queued(txid)))
+            {
+                let message = if queued.len() == 1 {
+                    "That transaction is already in the queue."
+                } else {
+                    "Those transactions are already in the queue."
+                };
+                parse_error.set(Some(message.to_string()));
                 return;
             }
 
@@ -565,6 +598,47 @@ mod tests {
                 .map(|item| (item.id, item.name.as_str()))
                 .collect::<Vec<_>>(),
             vec![(0, "first"), (1, "second"), (2, "third")]
+        );
+    }
+
+    #[test]
+    fn extending_skips_a_transaction_already_queued() {
+        fn decoded(txid: &str) -> QueueItem {
+            QueueItem {
+                id: 0,
+                name: txid.to_string(),
+                origin: "test".to_string(),
+                format: RowFormat::RawTx,
+                body: QueueItemBody::Decoded {
+                    vsize: 100,
+                    txid: txid.to_string(),
+                    tx_hex: "00".to_string(),
+                    known_fee_sats: None,
+                    output_sum_sats: 0,
+                },
+                note: None,
+                submission: SubmissionState::Unsent,
+                total_input_override: None,
+            }
+        }
+
+        let mut state = QueueState {
+            items: Vec::new(),
+            next_id: 0,
+        };
+
+        extend_with_ids(&mut state, vec![decoded("aa"), decoded("bb")]);
+        extend_with_ids(&mut state, vec![decoded("aa"), decoded("cc")]);
+        // Two invalid rows share no txid, so neither is a duplicate.
+        extend_with_ids(&mut state, vec![item("bad"), item("bad")]);
+
+        assert_eq!(
+            state
+                .items
+                .iter()
+                .map(|item| item.txid().unwrap_or("none"))
+                .collect::<Vec<_>>(),
+            vec!["aa", "bb", "cc", "none", "none"]
         );
     }
 
