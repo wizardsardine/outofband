@@ -1,9 +1,7 @@
-use gloo_net::http::Request;
 use gloo_timers::future::TimeoutFuture;
-use serde::Deserialize;
 use yew::prelude::*;
 
-use crate::tokens::FEE_POLL_INTERVAL_MS;
+use crate::{slipstream, tokens::FEE_POLL_INTERVAL_MS};
 
 #[derive(Clone, PartialEq)]
 pub struct FeeSnapshot {
@@ -11,15 +9,9 @@ pub struct FeeSnapshot {
     pub stale: bool,
 }
 
-#[derive(Deserialize)]
-struct FeeResponse {
-    effective_rate_sat_vb: f64,
-    stale: bool,
-}
-
-/// Polls `GET /fee` every [`FEE_POLL_INTERVAL_MS`]. A failed poll never
-/// wipes the last known rate: it is kept and marked stale, so the fee card
-/// can dim a number instead of presenting a dead one as live.
+/// Polls Slipstream's rates every [`FEE_POLL_INTERVAL_MS`]. A failed poll
+/// never wipes the last known rate: it is kept and marked stale, so the fee
+/// card can dim a number instead of presenting a dead one as live.
 #[hook]
 pub fn use_fee() -> Option<FeeSnapshot> {
     let fee = use_state(|| None::<FeeSnapshot>);
@@ -50,13 +42,14 @@ pub fn use_fee() -> Option<FeeSnapshot> {
 }
 
 async fn fetch_fee() -> Option<FeeSnapshot> {
-    let response = Request::get("/fee").send().await.ok()?;
-    if !response.ok() {
+    let rate = slipstream::fetch_rates().await?;
+    // A rate that is not a usable number counts as a failed poll: rendering
+    // 0 sat/vB as live would put every queued transaction above the floor.
+    if !rate.is_finite() || rate <= 0.0 {
         return None;
     }
-    let body: FeeResponse = response.json().await.ok()?;
     Some(FeeSnapshot {
-        rate_sat_vb: body.effective_rate_sat_vb,
-        stale: body.stale,
+        rate_sat_vb: rate,
+        stale: false,
     })
 }
