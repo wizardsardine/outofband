@@ -112,7 +112,7 @@ impl SlipstreamClient {
         let response = request
             .send()
             .await
-            .map_err(transport_error)?;
+            .map_err(|err| self.transport_error(err))?;
         let (status, body) = self.read_response(response).await?;
 
         if status.is_success() {
@@ -128,7 +128,7 @@ impl SlipstreamClient {
         }
 
         match serde_json::from_str::<RatesErrorBody>(&body) {
-            Ok(err) => Err(SlipstreamError::Rejected(err.message.clone())),
+            Ok(err) => Err(SlipstreamError::Rejected(self.redact(&err.message))),
             Err(_) => Err(SlipstreamError::Http {
                 status: status.as_u16(),
                 body: "could not parse rates error response".to_string(),
@@ -158,7 +158,7 @@ impl SlipstreamClient {
             .json(&body)
             .send()
             .await
-            .map_err(transport_error)?;
+            .map_err(|err| self.transport_error(err))?;
         let (status, text) = self.read_response(response).await?;
 
         let parsed: SubmitResponseBody =
@@ -170,12 +170,12 @@ impl SlipstreamClient {
         if parsed.status == "success" {
             return Ok(SubmitResult {
                 status: parsed.status,
-                message: parsed.message.clone(),
+                message: self.redact(&parsed.message),
             });
         }
 
         let client_code_issue = is_client_code_issue(&parsed.message);
-        let message = parsed.message.clone();
+        let message = self.redact(&parsed.message);
         if client_code_issue {
             return Err(SlipstreamError::ClientCode(message));
         }
@@ -198,7 +198,7 @@ impl SlipstreamClient {
         while let Some(chunk) = response
             .chunk()
             .await
-            .map_err(transport_error)?
+            .map_err(|err| self.transport_error(err))?
         {
             if body.len().saturating_add(chunk.len()) > MAX_RESPONSE_BODY_BYTES {
                 return Err(SlipstreamError::Http {
@@ -212,10 +212,16 @@ impl SlipstreamClient {
         Ok((status, String::from_utf8_lossy(&body).into_owned()))
     }
 
-}
+    fn transport_error(&self, err: reqwest::Error) -> SlipstreamError {
+        SlipstreamError::Transport(self.redact(&err.without_url().to_string()))
+    }
 
-fn transport_error(err: reqwest::Error) -> SlipstreamError {
-    SlipstreamError::Transport(err.without_url().to_string())
+    fn redact(&self, message: &str) -> String {
+        match &self.client_code {
+            Some(client_code) => message.replace(client_code, "<redacted>"),
+            None => message.to_string(),
+        }
+    }
 }
 
 /// The only substring MARA's documented "client codes are currently

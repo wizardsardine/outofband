@@ -199,3 +199,85 @@ async fn oversized_response_body_is_rejected() {
         other => panic!("expected Http error, got {other:?}"),
     }
 }
+
+#[tokio::test]
+async fn credential_is_redacted_from_parsed_response_message() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/api/transactions"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_string(
+                r#"{"status":"error","message":"credential MYCODE123 was rejected"}"#,
+            ),
+        )
+        .mount(&server)
+        .await;
+
+    let client = SlipstreamClient::new(&config(server.uri(), "MYCODE123"));
+    let err = client
+        .submit_tx("deadbeef")
+        .await
+        .expect_err("the response is a rejection");
+
+    match err {
+        SlipstreamError::Rejected(message) => {
+            assert_eq!(message, "credential <redacted> was rejected");
+        }
+        other => panic!("expected Rejected error, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn credential_is_redacted_from_malformed_response_body() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/api/transactions"))
+        .respond_with(ResponseTemplate::new(502).set_body_string("bad MYCODE123 response"))
+        .mount(&server)
+        .await;
+
+    let client = SlipstreamClient::new(&config(server.uri(), "MYCODE123"));
+    let err = client
+        .submit_tx("deadbeef")
+        .await
+        .expect_err("the malformed response must fail");
+
+    let display = err.to_string();
+    let debug = format!("{err:?}");
+    assert_eq!(
+        display,
+        "unexpected response (HTTP 502): could not parse submission response"
+    );
+    assert!(!display.contains("MYCODE123"));
+    assert!(!debug.contains("MYCODE123"));
+}
+
+#[tokio::test]
+async fn json_special_characters_in_credential_do_not_leak_from_malformed_response() {
+    let server = MockServer::start().await;
+    let client_code = "MY\"CODE\\WITH\nSPECIAL";
+    let encoded_client_code = serde_json::to_string(client_code).unwrap();
+    let malformed_body = format!(r#"{{"client_code":{encoded_client_code}"#);
+    Mock::given(method("POST"))
+        .and(path("/api/transactions"))
+        .respond_with(ResponseTemplate::new(502).set_body_string(malformed_body))
+        .mount(&server)
+        .await;
+
+    let client = SlipstreamClient::new(&config(server.uri(), client_code));
+    let err = client
+        .submit_tx("deadbeef")
+        .await
+        .expect_err("the malformed response must fail");
+
+    let display = err.to_string();
+    let debug = format!("{err:?}");
+    assert_eq!(
+        display,
+        "unexpected response (HTTP 502): could not parse submission response"
+    );
+    assert!(!display.contains(client_code));
+    assert!(!display.contains(&encoded_client_code));
+    assert!(!debug.contains(client_code));
+    assert!(!debug.contains(&encoded_client_code));
+}
