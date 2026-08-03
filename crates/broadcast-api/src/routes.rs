@@ -154,12 +154,8 @@ async fn post_broadcast(
     Json(request): Json<BroadcastRequest>,
 ) -> impl IntoResponse {
     let ip = rate_limit::resolve_client_ip(&headers, peer);
-
-    if let Err(retry_after) = state.rate_limiter.check(ip) {
-        return rate_limited_response(retry_after);
-    }
-
-    let tx = match tx_core::decode_as(tx_core::Format::TxHex, request.tx_hex.trim().as_bytes()) {
+    let tx_hex = request.tx_hex.trim();
+    let tx = match tx_core::decode_as(tx_core::Format::TxHex, tx_hex.as_bytes()) {
         Ok(tx_core::Decoded::Transaction(tx)) if tx.input.is_empty() => {
             return broadcast_response(
                 StatusCode::BAD_REQUEST,

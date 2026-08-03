@@ -1,7 +1,7 @@
 //! Per-IP sliding-window rate limiter for `POST /broadcast` (PLAN.md
 //! section 4, "Rate limiting"). Each IP may attempt at most `max_tx`
-//! submissions within any rolling `window`; the map self-cleans on access,
-//! so no background sweep task is needed.
+//! submissions within any rolling `window`; the map self-cleans periodically
+//! on access, so no background sweep task is needed.
 
 use std::collections::{HashMap, VecDeque};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
@@ -21,66 +21,75 @@ fn is_exempt(ip: IpAddr) -> bool {
 pub struct RateLimiter {
     window: Duration,
     max_tx: usize,
-    requests: std::sync::Arc<Mutex<HashMap<IpAddr, VecDeque<Instant>>>>,
+    state: std::sync::Arc<Mutex<RateLimitState>>,
+}
+
+struct RateLimitState {
+    requests: HashMap<IpAddr, VecDeque<Instant>>,
+    last_cleanup: Instant,
 }
 
 impl RateLimiter {
     pub fn new(window: Duration, max_tx: usize) -> Self {
+        let now = Instant::now();
         Self {
             window,
             max_tx,
-            requests: std::sync::Arc::new(Mutex::new(HashMap::new())),
+            state: std::sync::Arc::new(Mutex::new(RateLimitState {
+                requests: HashMap::new(),
+                last_cleanup: now,
+            })),
         }
     }
 
-    /// Prunes entries older than `window` from `ip`'s deque, then reports
-    /// whether a new submission is currently allowed. Localhost is always
-    /// exempt. Does not record anything — call [`RateLimiter::record`]
-    /// separately once a submission is actually attempted.
-    pub fn check(&self, ip: IpAddr) -> Result<(), Duration> {
+    /// Prunes the current IP, then atomically admits and records its request.
+    /// Stale IPs are removed periodically. Localhost is always exempt.
+    pub fn check_and_record(&self, ip: IpAddr) -> Result<(), Duration> {
         if is_exempt(ip) {
             return Ok(());
         }
 
-        let mut requests = self.requests.lock().unwrap();
+        let mut state = self.state.lock().unwrap();
         let now = Instant::now();
-        let Some(deque) = prune(&mut requests, ip, self.window, now) else {
-            return Ok(());
-        };
+        prune_ip(&mut state.requests, ip, self.window, now);
+        if now.duration_since(state.last_cleanup) >= self.window {
+            prune_all(&mut state.requests, self.window, now);
+            state.last_cleanup = now;
+        }
+        let deque = state.requests.entry(ip).or_default();
 
         if deque.len() < self.max_tx {
+            deque.push_back(now);
             Ok(())
         } else {
             let oldest = *deque.front().expect("len >= max_tx > 0");
             Err(self.window.saturating_sub(now.duration_since(oldest)))
         }
     }
-
-    /// Records a submission attempt against `ip`. Called only when a
-    /// submission is actually attempted against Slipstream, so requests that
-    /// fail hex validation never consume the allowance.
-    pub fn record(&self, ip: IpAddr) {
-        if is_exempt(ip) {
-            return;
-        }
-
-        let mut requests = self.requests.lock().unwrap();
-        let now = Instant::now();
-        prune(&mut requests, ip, self.window, now);
-        requests.entry(ip).or_default().push_back(now);
-    }
 }
 
-/// Removes entries older than `window` from `ip`'s deque, dropping the key
-/// entirely if it empties, so idle IPs never leak memory. Returns the
-/// deque if it still exists after pruning.
-fn prune(
+fn prune_ip(
     requests: &mut HashMap<IpAddr, VecDeque<Instant>>,
     ip: IpAddr,
     window: Duration,
     now: Instant,
-) -> Option<&mut VecDeque<Instant>> {
-    let deque = requests.get_mut(&ip)?;
+) {
+    if let Some(deque) = requests.get_mut(&ip) {
+        prune_deque(deque, window, now);
+        if deque.is_empty() {
+            requests.remove(&ip);
+        }
+    }
+}
+
+fn prune_all(requests: &mut HashMap<IpAddr, VecDeque<Instant>>, window: Duration, now: Instant) {
+    requests.retain(|_, deque| {
+        prune_deque(deque, window, now);
+        !deque.is_empty()
+    });
+}
+
+fn prune_deque(deque: &mut VecDeque<Instant>, window: Duration, now: Instant) {
     while let Some(&oldest) = deque.front() {
         if now.duration_since(oldest) >= window {
             deque.pop_front();
@@ -88,33 +97,28 @@ fn prune(
             break;
         }
     }
-    if deque.is_empty() {
-        requests.remove(&ip);
-        None
-    } else {
-        requests.get_mut(&ip)
-    }
 }
 
-/// Resolves the client IP in order: first entry of `X-Forwarded-For`, then
-/// `X-Real-IP`, then the socket peer address. Trustworthy because the
-/// backend binds to localhost and only nginx can reach it, and the nginx
-/// config always sets both headers. A malformed or unparseable header value
-/// falls through to the next source rather than erroring.
+/// Trusts proxy headers only from a local nginx peer. nginx overwrites
+/// `X-Real-IP`; the last `X-Forwarded-For` entry is its fallback address.
 pub fn resolve_client_ip(headers: &HeaderMap, peer: SocketAddr) -> IpAddr {
-    if let Some(ip) = headers
-        .get("x-forwarded-for")
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.split(',').next())
-        .and_then(|first| first.trim().parse::<IpAddr>().ok())
-    {
-        return ip;
+    if !is_exempt(peer.ip()) {
+        return peer.ip();
     }
 
     if let Some(ip) = headers
         .get("x-real-ip")
         .and_then(|value| value.to_str().ok())
         .and_then(|value| value.trim().parse::<IpAddr>().ok())
+    {
+        return ip;
+    }
+
+    if let Some(ip) = headers
+        .get("x-forwarded-for")
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.rsplit(',').next())
+        .and_then(|last| last.trim().parse::<IpAddr>().ok())
     {
         return ip;
     }
@@ -140,10 +144,9 @@ mod tests {
         let limiter = RateLimiter::new(Duration::from_secs(600), 3);
         let client = ip("10.0.0.1");
         for _ in 0..3 {
-            assert!(limiter.check(client).is_ok());
-            limiter.record(client);
+            assert!(limiter.check_and_record(client).is_ok());
         }
-        assert!(limiter.check(client).is_err());
+        assert!(limiter.check_and_record(client).is_err());
     }
 
     #[test]
@@ -151,8 +154,8 @@ mod tests {
         let window = Duration::from_secs(600);
         let limiter = RateLimiter::new(window, 1);
         let client = ip("10.0.0.2");
-        limiter.record(client);
-        let remaining = limiter.check(client).unwrap_err();
+        limiter.check_and_record(client).unwrap();
+        let remaining = limiter.check_and_record(client).unwrap_err();
         assert!(remaining > Duration::ZERO);
         assert!(remaining <= window);
     }
@@ -162,12 +165,11 @@ mod tests {
         let window = Duration::from_millis(50);
         let limiter = RateLimiter::new(window, 1);
         let client = ip("10.0.0.3");
-        assert!(limiter.check(client).is_ok());
-        limiter.record(client);
-        assert!(limiter.check(client).is_err());
+        assert!(limiter.check_and_record(client).is_ok());
+        assert!(limiter.check_and_record(client).is_err());
 
         tokio::time::sleep(window + Duration::from_millis(10)).await;
-        assert!(limiter.check(client).is_ok());
+        assert!(limiter.check_and_record(client).is_ok());
     }
 
     #[test]
