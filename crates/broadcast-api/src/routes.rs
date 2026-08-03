@@ -190,11 +190,14 @@ async fn post_broadcast(
         }
     };
 
+    if let Err(retry_after) = state.rate_limiter.check_and_record(ip) {
+        return rate_limited_response(retry_after);
+    }
+
     let vsize = tx_core::vsize(&tx);
     let txid = tx.compute_txid().to_string();
-    state.rate_limiter.record(ip);
 
-    match state.slipstream.submit_tx(&request.tx_hex).await {
+    match state.slipstream.submit_tx(tx_hex).await {
         Ok(_) => broadcast_response(StatusCode::OK, Some(txid), Some(vsize), "submitted", None),
         Err(SlipstreamError::Rejected(message)) => broadcast_response(
             StatusCode::OK,
@@ -446,10 +449,11 @@ mod tests {
         );
         let app = router(state, TEST_MAX_PAYLOAD_BYTES);
         let expected_txid = sample_transaction(0).compute_txid().to_string();
+        let tx_hex = sample_tx_hex();
 
         let response = app
             .oneshot(broadcast_request(
-                json!({"tx_hex": sample_tx_hex()}),
+                json!({"tx_hex": format!("  \n{tx_hex}\t ")}),
                 non_local_peer(1),
             ))
             .await
@@ -461,6 +465,12 @@ mod tests {
         assert_eq!(json["txid"], expected_txid);
         assert!(json["vsize"].as_u64().unwrap() > 0);
         assert_eq!(json["error"], serde_json::Value::Null);
+        let received = server.received_requests().await.unwrap();
+        assert_eq!(received.len(), 1);
+        assert_eq!(
+            received[0].body_json::<serde_json::Value>().unwrap()["tx_hex"],
+            tx_hex
+        );
     }
 
     #[tokio::test]
