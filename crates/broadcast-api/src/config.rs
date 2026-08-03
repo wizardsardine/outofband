@@ -85,10 +85,37 @@ pub fn load_config(path: &str) -> Result<Config, ConfigError> {
 }
 
 fn parse_config(text: &str, path: &str) -> Result<Config, ConfigError> {
-    let raw: RawConfig = toml::from_str(text).map_err(|source| ConfigError::Parse {
+    let raw: RawConfig = toml::from_str(text).map_err(|_| ConfigError::Parse {
         path: path.to_string(),
-        source,
     })?;
+
+    let invalid = [
+        (
+            "slipstream.request_timeout_secs",
+            raw.slipstream.request_timeout_secs == 0,
+        ),
+        (
+            "broadcast_api.fee_poll_secs",
+            raw.broadcast_api.fee_poll_secs == 0,
+        ),
+        (
+            "broadcast_api.rate_limit_window_secs",
+            raw.broadcast_api.rate_limit_window_secs == 0,
+        ),
+        (
+            "broadcast_api.rate_limit_max_tx",
+            raw.broadcast_api.rate_limit_max_tx == 0,
+        ),
+        (
+            "broadcast_api.max_payload_bytes",
+            raw.broadcast_api.max_payload_bytes == 0,
+        ),
+    ]
+    .into_iter()
+    .find_map(|(key, invalid)| invalid.then_some(key));
+    if let Some(key) = invalid {
+        return Err(ConfigError::InvalidValue { key });
+    }
 
     let listen_addr =
         raw.broadcast_api
@@ -263,6 +290,40 @@ listen_addr = "not an address"
 "#;
         let err = parse_config(text, "test.toml").unwrap_err();
         assert!(matches!(err, ConfigError::InvalidListenAddr { .. }));
+    }
+
+    #[test]
+    fn rejects_zero_config_values() {
+        let values = [
+            ("slipstream.request_timeout_secs", 0, 1, 1, 1, 1),
+            ("broadcast_api.fee_poll_secs", 1, 0, 1, 1, 1),
+            ("broadcast_api.rate_limit_window_secs", 1, 1, 0, 1, 1),
+            ("broadcast_api.rate_limit_max_tx", 1, 1, 1, 0, 1),
+            ("broadcast_api.max_payload_bytes", 1, 1, 1, 1, 0),
+        ];
+
+        for (expected_key, timeout, poll, window, max_tx, payload) in values {
+            let text = format!(
+                r#"
+[slipstream]
+base_url = "https://slipstream.mara.com"
+fee_endpoint = "/api/rates"
+submit_endpoint = "/api/transactions"
+request_timeout_secs = {timeout}
+
+[broadcast_api]
+fee_poll_secs = {poll}
+rate_limit_window_secs = {window}
+rate_limit_max_tx = {max_tx}
+max_payload_bytes = {payload}
+"#
+            );
+            let err = parse_config(&text, "test.toml").unwrap_err();
+            assert!(
+                matches!(err, ConfigError::InvalidValue { key } if key == expected_key),
+                "wrong error for {expected_key}: {err}"
+            );
+        }
     }
 
     #[test]
