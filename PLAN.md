@@ -809,11 +809,13 @@ place in the queue, carry the reason in an error note card, and gain a
 quiet `Retry` control beside the status; nothing but the user's `×` or
 "Clear queue" ever removes a row.
 
-Rows carry contextual note cards (the ok/warn/error triples in the tokens
-above) for analysis results: "Missing UTXO data for n input(s). Fee and
-final scripts could not be validated.", "Finalized locally: n input(s) to
-m output(s), ready to extract.", or "Malformed: <reason>" / "Not valid
-base64 PSBT or hex transaction data."
+Rows carry contextual note cards (the warn/error triples in the tokens
+above) only when there is something to say: "Missing UTXO data for n
+input(s). Fee and final scripts could not be validated.", or
+"Malformed: <reason>" / "Not valid base64 PSBT or hex transaction data."
+A row that finalized cleanly gets no note. Its status, vsize and fee rate
+already report that it is ready, and a card on every good row is clutter
+that makes the rows which do need attention harder to spot.
 (Not-fully-signed PSBTs never become rows — they are
 refused at load time by the finalization modal, section 1.)
 

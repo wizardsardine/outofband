@@ -6,8 +6,8 @@ use bitcoin::{Psbt, Transaction};
 use tx_core::{Decoded, FinalizeError, FinalizedPsbt, FloorComparison, Format, PsbtFee};
 
 use crate::tokens::{
-    ACCENT_TEAL_BRIGHT, ERROR_RED, IN_FLIGHT, NOTE_CARD_ERROR, NOTE_CARD_OK, NOTE_CARD_WARN,
-    TEXT_DISABLED, TEXT_MUTED_7B, TEXT_PRIMARY, WARNING,
+    ACCENT_TEAL_BRIGHT, ERROR_RED, IN_FLIGHT, NOTE_CARD_ERROR, NOTE_CARD_WARN, TEXT_DISABLED,
+    TEXT_MUTED_7B, TEXT_PRIMARY, WARNING,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -29,7 +29,6 @@ impl RowFormat {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum NoteKind {
-    Ok,
     Warn,
     Error,
 }
@@ -38,7 +37,6 @@ impl NoteKind {
     /// (border, left edge, text) colour triple.
     pub fn colors(self) -> (&'static str, &'static str, &'static str) {
         match self {
-            NoteKind::Ok => NOTE_CARD_OK,
             NoteKind::Warn => NOTE_CARD_WARN,
             NoteKind::Error => NOTE_CARD_ERROR,
         }
@@ -366,19 +364,10 @@ fn from_psbt(id: u64, name: String, origin: String, psbt: Psbt) -> AnalyzeOutcom
         }
         Ok(finalized) => {
             let (tx, note) = match finalized {
-                FinalizedPsbt::Validated(tx) => {
-                    let note = NoteCard {
-                        kind: NoteKind::Ok,
-                        text: format!(
-                            "Finalized locally: {} input{} to {} output{}, ready to extract.",
-                            tx.input.len(),
-                            if tx.input.len() > 1 { "s" } else { "" },
-                            tx.output.len(),
-                            if tx.output.len() > 1 { "s" } else { "" }
-                        ),
-                    };
-                    (tx, Some(note))
-                }
+                // No note: the row's own status, vsize and fee rate already
+                // say it is ready. A note card here is noise on every good
+                // row, which makes the ones that matter easier to miss.
+                FinalizedPsbt::Validated(tx) => (tx, None),
                 FinalizedPsbt::Unchecked {
                     transaction,
                     missing_utxo_inputs,

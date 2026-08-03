@@ -39,6 +39,9 @@ pub const SURFACE_PARSE_ERROR_BORDER: &str = "#4a2230";
 /// Row note card colour triples: (border, left edge, text).
 pub const NOTE_CARD_ERROR: (&str, &str, &str) = ("#4a2230", "#ef445f", "#c9a8b0");
 pub const NOTE_CARD_WARN: (&str, &str, &str) = ("#3d3520", "#e0b341", "#c9bb95");
+/// Kept from the mockup though nothing renders an ok note today: a
+/// good row says so through its status, not a card.
+#[allow(dead_code)]
 pub const NOTE_CARD_OK: (&str, &str, &str) = ("#20343d", "#5fe7e4", "#9dc4cc");
 
 pub const FEE_NUMBER_GRADIENT: &str =
