@@ -930,7 +930,11 @@ a higher rate before the submission is relied on.
 Footer: separated by a `#1a1a1a` top rule, "Built by
 [Wizardsardine](https://wizardsardine.com)" on the left and the
 "Disclosure" and "Slipstream terms" links on the right, 13px, wrapping on
-narrow screens. Links are `#b0def0`, hovering to `#5fe7e4`, undecorated.
+narrow screens. Links are `#b0def0`, hovering to `#5fe7e4`, undecorated. Every link leaving the page carries
+`target="_blank"` with `rel="noopener noreferrer"`: the new tab must not
+get a `window.opener` handle back to this one, and the referrer is not
+MARA's business. "Slipstream terms" points at the service itself, since
+MARA publishes no separate terms page to link.
 
 All authoritative validation is Slipstream's; the browser's analysis
 exists for instant feedback, its structural checks to avoid wasting a

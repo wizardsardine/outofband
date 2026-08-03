@@ -13,11 +13,11 @@ pub fn footer() -> Html {
         <div style={row_style}>
             <span style={attribution_style}>
                 {"Built by "}
-                <a href="https://wizardsardine.com" target="_blank">{"Wizardsardine"}</a>
+                <a href="https://wizardsardine.com" target="_blank" rel="noopener noreferrer">{"Wizardsardine"}</a>
             </span>
             <div style="display:flex;gap:22px;font-size:13px">
-                <a href="https://wizardsardine.com/blog/coldcard-rng-vulnerability/" target="_blank">{"Disclosure"}</a>
-                <a href="#">{"Slipstream terms"}</a>
+                <a href="https://wizardsardine.com/blog/coldcard-rng-vulnerability/" target="_blank" rel="noopener noreferrer">{"Disclosure"}</a>
+                <a href="https://slipstream.mara.com/" target="_blank" rel="noopener noreferrer">{"Slipstream terms"}</a>
             </div>
         </div>
     }

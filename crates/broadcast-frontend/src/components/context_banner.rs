@@ -14,7 +14,7 @@ pub fn context_banner() -> Html {
         <div style={style}>
             <p style={text_style}>
                 {"This tool exists because of a specific failure: keys generated with predictable randomness can be recovered by anyone who notices. If that is your situation, moving the coins is a race, and the public mempool is where you lose it. "}
-                <a href="https://wizardsardine.com/blog/coldcard-rng-vulnerability/" target="_blank" style="font-weight:600">{"Read the disclosure ›"}</a>
+                <a href="https://wizardsardine.com/blog/coldcard-rng-vulnerability/" target="_blank" rel="noopener noreferrer" style="font-weight:600">{"Read the disclosure ›"}</a>
             </p>
         </div>
     }
