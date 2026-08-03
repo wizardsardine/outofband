@@ -10,20 +10,14 @@ test:
     cargo test
     cd crates/broadcast-frontend && wasm-pack test --headless --firefox
 
-# Run the whole stack locally over plain HTTP: no nginx, no TLS, no
-# systemd, no root. Backend on 127.0.0.1:3010, frontend on :8080.
+# Serve the frontend on :8080 over plain HTTP: no nginx, no TLS, no
+# systemd, no root. It talks to MARA directly, so there is nothing else
+# to start.
 run:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    [ -f dev-config.toml ] || { install -m 600 deploy/config.toml dev-config.toml; \
-        echo "created dev-config.toml; fill client_code to broadcast"; }
-    chmod 600 dev-config.toml
-    cargo run -p broadcast-api -- dev-config.toml &
-    trap 'kill %1 2>/dev/null || true' EXIT
     cd crates/broadcast-frontend && trunk serve --open
 
 serve:
-    cd crates/broadcast-frontend && trunk serve   # frontend only, :3010 must be up
+    cd crates/broadcast-frontend && trunk serve   # same as `run`, without opening a browser
 
 deploy remote:
     ./deploy/install.sh {{ quote(remote) }}
