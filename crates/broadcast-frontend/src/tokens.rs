@@ -67,6 +67,13 @@ pub const FEE_POLL_INTERVAL_MS: u32 = 30_000;
 /// configurable: the frontend has no other per-deploy configuration surface.
 pub const BLOCK_EXPLORER_TX_URL: &str = "https://mempool.space/tx/";
 
+/// Public source repository, linked from the footer.
+pub const SOURCE_REPO_URL: &str = "https://github.com/wizardsardine/outofband";
+
+/// Commit this bundle was built from, baked in by `build.rs`. "unknown" when
+/// the build had neither a repository nor `OUTOFBAND_COMMIT` to read.
+pub const COMMIT: &str = env!("OUTOFBAND_COMMIT");
+
 /// Shared grid template for the queue table's header and rows.
 pub const QUEUE_ROW_COLUMNS: &str = "26px minmax(0,2.4fr) 110px 130px 150px 120px 30px";
 

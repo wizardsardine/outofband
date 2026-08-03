@@ -13,6 +13,14 @@ die() { log_error "$*"; exit 1; }
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# Resolved here because the rsync below excludes .git, leaving the server with
+# no repository to ask. Exported so the frontend build bakes it in.
+if [ -z "${OUTOFBAND_COMMIT:-}" ] && git -C "$PROJECT_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+  OUTOFBAND_COMMIT="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD)"
+  [ -n "$(git -C "$PROJECT_ROOT" status --porcelain)" ] && OUTOFBAND_COMMIT="$OUTOFBAND_COMMIT-dirty"
+fi
+export OUTOFBAND_COMMIT="${OUTOFBAND_COMMIT:-unknown}"
+
 REMOTE="${1:-}"
 [ $# -le 1 ] || die "unexpected argument: $2"
 
@@ -33,7 +41,7 @@ if [ -n "$REMOTE" ]; then
     -- "$PROJECT_ROOT"/ "$REMOTE":/opt/outofband/src/
 
   log_info "running update.sh on $REMOTE"
-  ssh -- "$REMOTE" /opt/outofband/src/deploy/update.sh
+  ssh -- "$REMOTE" "OUTOFBAND_COMMIT=$(printf '%q' "$OUTOFBAND_COMMIT") /opt/outofband/src/deploy/update.sh"
 
   log_info "remote update complete"
   exit 0

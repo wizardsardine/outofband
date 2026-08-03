@@ -1093,8 +1093,15 @@ a button this UI does not have (departure 4).
 
 Footer: separated by a `#1a1a1a` top rule, "Built by
 [Wizardsardine](https://wizardsardine.com)" on the left and the
-"Source", "Disclosure" and "Slipstream terms" links on the right, 13px, wrapping on
-narrow screens. Links are `#b0def0`, hovering to `#5fe7e4`, undecorated. Every link leaving the page carries
+"Source", the running commit, "Disclosure" and "Slipstream terms" links
+on the right, 13px, wrapping on
+narrow screens. Links are `#b0def0`, hovering to `#5fe7e4`, undecorated. The commit is baked in by `build.rs`, which prefers
+`OUTOFBAND_COMMIT` from the environment and falls back to `git rev-parse`,
+suffixing `-dirty` when the tree has edits. The environment has to win
+because the deploy rsync excludes `.git`, so a server has no repository to
+ask; both deploy scripts resolve the hash locally and forward it across the
+ssh re-exec. It renders as plain text rather than a link when neither
+source is available, since a link would 404. Every link leaving the page carries
 `target="_blank"` with `rel="noopener noreferrer"`: the new tab must not
 get a `window.opener` handle back to this one, and the referrer is not
 MARA's business. "Slipstream terms" points at the service itself, since

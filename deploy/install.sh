@@ -13,6 +13,14 @@ die() { log_error "$*"; exit 1; }
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# Resolved here because the rsync below excludes .git, leaving the server with
+# no repository to ask. Exported so the frontend build bakes it in.
+if [ -z "${OUTOFBAND_COMMIT:-}" ] && git -C "$PROJECT_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+  OUTOFBAND_COMMIT="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD)"
+  [ -n "$(git -C "$PROJECT_ROOT" status --porcelain)" ] && OUTOFBAND_COMMIT="$OUTOFBAND_COMMIT-dirty"
+fi
+export OUTOFBAND_COMMIT="${OUTOFBAND_COMMIT:-unknown}"
+
 DOMAIN=""
 EMAIL=""
 REMOTE=""
@@ -66,7 +74,7 @@ if [ -n "$REMOTE" ]; then
   # The remote runs through a shell, so the flags are requoted rather than
   # interpolated raw: certbot has to run on the host that answers the ACME
   # challenge, and skipping it here would leave the site on plain HTTP.
-  REMOTE_CMD="/opt/outofband/src/deploy/install.sh --domain $(printf '%q' "$DOMAIN") --email $(printf '%q' "$EMAIL")"
+  REMOTE_CMD="OUTOFBAND_COMMIT=$(printf '%q' "$OUTOFBAND_COMMIT") /opt/outofband/src/deploy/install.sh --domain $(printf '%q' "$DOMAIN") --email $(printf '%q' "$EMAIL")"
 
   log_info "running install.sh on $REMOTE"
   ssh -- "$REMOTE" "$REMOTE_CMD"
