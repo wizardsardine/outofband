@@ -22,7 +22,7 @@ pub struct QueueHandle {
     /// finalized: (name, incomplete-input count). Non-empty opens the
     /// finalization modal; a fresh load operation replaces this list
     /// rather than appending to it.
-    pub refused_psbts: Vec<(String, usize)>,
+    pub refused_psbts: Vec<(String, String)>,
     pub on_raw_text: Callback<String>,
     pub on_submit: Callback<()>,
     pub on_clear: Callback<()>,
@@ -100,7 +100,7 @@ pub fn use_queue() -> QueueHandle {
     let raw_text = use_state(String::new);
     let parse_error = use_state(|| None::<String>);
     let broadcasting = use_state(|| false);
-    let refused_psbts = use_state(Vec::<(String, usize)>::new);
+    let refused_psbts = use_state(Vec::<(String, String)>::new);
 
     let on_raw_text = {
         let raw_text = raw_text.clone();
@@ -128,11 +128,10 @@ pub fn use_queue() -> QueueHandle {
             let mut refused = Vec::new();
             for line in &lines {
                 match queue::analyze(id, queue::short_name(line), "pasted".to_string(), line) {
-                    AnalyzeOutcome::Queued(item) => queued.push(item),
-                    AnalyzeOutcome::UnfinalizablePsbt {
-                        name,
-                        incomplete_inputs,
-                    } => refused.push((name, incomplete_inputs)),
+                    AnalyzeOutcome::Queued(item) => queued.push(*item),
+                    AnalyzeOutcome::UnfinalizablePsbt { name, reason } => {
+                            refused.push((name, reason))
+                        }
                 }
                 id += 1;
             }
@@ -209,10 +208,9 @@ pub fn use_queue() -> QueueHandle {
                         for item in unpacked {
                             match queue::analyze(id, item.label, origin.clone(), &item.text) {
                                 AnalyzeOutcome::Queued(queue_item) => queued.push(queue_item),
-                                AnalyzeOutcome::UnfinalizablePsbt {
-                                    name,
-                                    incomplete_inputs,
-                                } => refused.push((name, incomplete_inputs)),
+                                AnalyzeOutcome::UnfinalizablePsbt { name, reason } => {
+                                        refused.push((name, reason))
+                                    }
                             }
                             id += 1;
                         }

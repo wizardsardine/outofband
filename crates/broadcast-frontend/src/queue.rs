@@ -3,7 +3,7 @@
 //! only shapes `tx-core`'s output for the queue table to render.
 
 use bitcoin::{Psbt, Transaction};
-use tx_core::{Decoded, FloorComparison, Format, PsbtFee};
+use tx_core::{Decoded, FinalizeError, FinalizedPsbt, FloorComparison, Format, PsbtFee};
 
 use crate::tokens::{
     ACCENT_TEAL_BRIGHT, ERROR_RED, IN_FLIGHT, NOTE_CARD_ERROR, NOTE_CARD_OK, NOTE_CARD_WARN,
@@ -116,11 +116,8 @@ fn payload_cap_error(tx_hex: &str) -> Option<String> {
 /// modal instead (PLAN.md section 1), so it gets its own variant rather
 /// than an `Invalid` row.
 pub enum AnalyzeOutcome {
-    Queued(QueueItem),
-    UnfinalizablePsbt {
-        name: String,
-        incomplete_inputs: usize,
-    },
+    Queued(Box<QueueItem>),
+    UnfinalizablePsbt { name: String, reason: String },
 }
 
 impl QueueItem {
@@ -241,25 +238,25 @@ pub fn unreadable_file(id: u64, name: String, origin: String, message: String) -
 pub fn analyze(id: u64, name: String, origin: String, text: &str) -> AnalyzeOutcome {
     let bytes = text.as_bytes();
     match tx_core::detect(bytes) {
-        None => AnalyzeOutcome::Queued(QueueItem::invalid(
+        None => AnalyzeOutcome::Queued(Box::new(QueueItem::invalid(
             id,
             name,
             origin,
             RowFormat::Unknown,
             UNRECOGNISED_MESSAGE.to_string(),
-        )),
+        ))),
         Some(format) => {
             let row_format = row_format_for(format);
             match tx_core::decode_as(format, bytes) {
-                Err(err) => AnalyzeOutcome::Queued(QueueItem::invalid(
+                Err(err) => AnalyzeOutcome::Queued(Box::new(QueueItem::invalid(
                     id,
                     name,
                     origin,
                     row_format,
                     capitalize(&err.to_string()),
-                )),
+                ))),
                 Ok(Decoded::Transaction(tx)) => {
-                    AnalyzeOutcome::Queued(from_transaction(id, name, origin, tx))
+                    AnalyzeOutcome::Queued(Box::new(from_transaction(id, name, origin, tx)))
                 }
                 Ok(Decoded::Psbt(psbt)) => from_psbt(id, name, origin, psbt),
             }
@@ -279,6 +276,18 @@ fn from_transaction(id: u64, name: String, origin: String, tx: Transaction) -> Q
     if let Some(message) = payload_cap_error(&tx_hex) {
         return QueueItem::invalid(id, name, origin, RowFormat::RawTx, message);
     }
+    let output_sum_sats = match tx_core::output_sum(&tx) {
+        Ok(output_sum) => output_sum,
+        Err(err) => {
+            return QueueItem::invalid(
+                id,
+                name,
+                origin,
+                RowFormat::RawTx,
+                capitalize(&err.to_string()),
+            );
+        }
+    };
     QueueItem {
         id,
         name,
@@ -289,7 +298,7 @@ fn from_transaction(id: u64, name: String, origin: String, tx: Transaction) -> Q
             txid: tx.compute_txid().to_string(),
             tx_hex,
             known_fee_sats: None,
-            output_sum_sats: tx_core::output_sum(&tx),
+            output_sum_sats,
         },
         note: None,
         submission: SubmissionState::Unsent,
@@ -298,28 +307,48 @@ fn from_transaction(id: u64, name: String, origin: String, tx: Transaction) -> Q
 }
 
 fn from_psbt(id: u64, name: String, origin: String, psbt: Psbt) -> AnalyzeOutcome {
-    let output_sum = tx_core::psbt_output_sum(&psbt);
-    let fee = tx_core::psbt_fee(&psbt);
+    let output_sum = match tx_core::psbt_output_sum(&psbt) {
+        Ok(output_sum) => output_sum,
+        Err(err) => {
+            return AnalyzeOutcome::Queued(Box::new(QueueItem::invalid(
+                id,
+                name,
+                origin,
+                RowFormat::Psbt,
+                capitalize(&err.to_string()),
+            )));
+        }
+    };
+    let fee = match tx_core::psbt_fee(&psbt) {
+        Ok(fee) => fee,
+        Err(err) => {
+            return AnalyzeOutcome::Queued(Box::new(QueueItem::invalid(
+                id,
+                name,
+                origin,
+                RowFormat::Psbt,
+                capitalize(&err.to_string()),
+            )));
+        }
+    };
     match tx_core::finalize(psbt) {
-        Err(err) => AnalyzeOutcome::UnfinalizablePsbt {
+        Err(err @ FinalizeError::Miniscript(_)) => AnalyzeOutcome::UnfinalizablePsbt {
             name,
-            incomplete_inputs: err.incomplete_inputs,
+            reason: err.to_string(),
         },
-        Ok(tx) => {
-            let tx_hex = tx_core::serialize_hex(&tx);
-            if let Some(message) = payload_cap_error(&tx_hex) {
-                return AnalyzeOutcome::Queued(QueueItem::invalid(
-                    id,
-                    name,
-                    origin,
-                    RowFormat::Psbt,
-                    message,
-                ));
-            }
-            let (known_fee_sats, note) = match fee {
-                PsbtFee::Known { fee_sats } => (
-                    Some(fee_sats),
-                    Some(NoteCard {
+        Err(FinalizeError::InvalidPsbt(err)) => {
+            AnalyzeOutcome::Queued(Box::new(QueueItem::invalid(
+                id,
+                name,
+                origin,
+                RowFormat::Psbt,
+                capitalize(&err.to_string()),
+            )))
+        }
+        Ok(finalized) => {
+            let (tx, note) = match finalized {
+                FinalizedPsbt::Validated(tx) => {
+                    let note = NoteCard {
                         kind: NoteKind::Ok,
                         text: format!(
                             "Finalized locally: {} input{} to {} output{}, ready to extract.",
@@ -328,21 +357,37 @@ fn from_psbt(id: u64, name: String, origin: String, psbt: Psbt) -> AnalyzeOutcom
                             tx.output.len(),
                             if tx.output.len() > 1 { "s" } else { "" }
                         ),
-                    }),
-                ),
-                PsbtFee::Unknown {
+                    };
+                    (tx, Some(note))
+                }
+                FinalizedPsbt::Unchecked {
+                    transaction,
                     missing_utxo_inputs,
                 } => (
-                    None,
+                    transaction,
                     Some(NoteCard {
                         kind: NoteKind::Warn,
                         text: format!(
-                            "Missing UTXO data for {missing_utxo_inputs} input(s). Fee cannot be derived."
+                            "Missing UTXO data for {missing_utxo_inputs} input(s). Fee and final scripts could not be validated."
                         ),
                     }),
                 ),
             };
-            AnalyzeOutcome::Queued(QueueItem {
+            let tx_hex = tx_core::serialize_hex(&tx);
+            if let Some(message) = payload_cap_error(&tx_hex) {
+                return AnalyzeOutcome::Queued(Box::new(QueueItem::invalid(
+                    id,
+                    name,
+                    origin,
+                    RowFormat::Psbt,
+                    message,
+                )));
+            }
+            let known_fee_sats = match fee {
+                PsbtFee::Known { fee_sats } => Some(fee_sats),
+                PsbtFee::Unknown { .. } => None,
+            };
+            AnalyzeOutcome::Queued(Box::new(QueueItem {
                 id,
                 name,
                 origin,
@@ -357,7 +402,7 @@ fn from_psbt(id: u64, name: String, origin: String, psbt: Psbt) -> AnalyzeOutcom
                 note,
                 submission: SubmissionState::Unsent,
                 total_input_override: None,
-            })
+            }))
         }
     }
 }
@@ -609,7 +654,7 @@ mod tests {
 
     fn analyze_queued(id: u64, name: &str, origin: &str, text: &str) -> QueueItem {
         match analyze(id, name.to_string(), origin.to_string(), text) {
-            AnalyzeOutcome::Queued(item) => item,
+            AnalyzeOutcome::Queued(item) => *item,
             AnalyzeOutcome::UnfinalizablePsbt { .. } => panic!("expected a queued row"),
         }
     }
@@ -676,15 +721,40 @@ mod tests {
             unsigned_psbt(),
         );
         match outcome {
-            AnalyzeOutcome::UnfinalizablePsbt {
-                name,
-                incomplete_inputs,
-            } => {
+            AnalyzeOutcome::UnfinalizablePsbt { name, reason } => {
                 assert_eq!(name, "unsigned.psbt");
-                assert_eq!(incomplete_inputs, 1);
+                assert!(reason.contains("cannot be finalized"));
             }
             AnalyzeOutcome::Queued(_) => panic!("expected the item to be refused, not queued"),
         }
+    }
+
+    #[test]
+    fn finalized_psbt_missing_utxo_is_queued_with_validation_warning() {
+        let mut psbt = unsigned_psbt();
+        psbt.inputs[0].final_script_witness = Some(bitcoin::Witness::from_slice(&[vec![1]]));
+
+        let mut item = analyze_queued(1, "final.psbt", "pasted", &psbt.to_string());
+        assert!(matches!(item.format, RowFormat::Psbt));
+        assert_eq!(
+            item.note.as_ref().expect("unchecked extraction warns").text,
+            "Missing UTXO data for 1 input(s). Fee and final scripts could not be validated."
+        );
+        assert!(shows_input_value_field(&item));
+
+        let output_sum_sats = match item.body {
+            QueueItemBody::Decoded {
+                known_fee_sats,
+                output_sum_sats,
+                ..
+            } => {
+                assert_eq!(known_fee_sats, None);
+                output_sum_sats
+            }
+            QueueItemBody::Invalid => panic!("finalized PSBT should be queued"),
+        };
+        item.total_input_override = Some(output_sum_sats + 1_000);
+        assert_eq!(effective_fee(&item), Some(1_000));
     }
 
     #[test]
@@ -785,7 +855,11 @@ mod tests {
 
     #[test]
     fn paste_gate_refuses_when_no_entry_is_recognised() {
-        for raw in ["garbage", "garbage\nmore garbage", "a\nb\nc"] {
+        for raw in [
+            "garbage",
+            "garbage\nmore garbage",
+            "not-hex!\nstill-not-hex!",
+        ] {
             assert_eq!(gate_of(raw), PasteGate::NothingRecognised, "input {raw:?}");
             assert!(!gate_of(raw).allows_queueing());
             assert_eq!(

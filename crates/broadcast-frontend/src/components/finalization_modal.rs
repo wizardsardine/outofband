@@ -8,7 +8,7 @@ use crate::tokens::{BORDER_STRONG, ERROR_RED, TEXT_MUTED_7B, TEXT_PRIMARY};
 /// covers every refusal from a single load operation.
 #[derive(Properties, PartialEq)]
 pub struct FinalizationModalProps {
-    pub refused: Vec<(String, usize)>,
+    pub refused: Vec<(String, String)>,
     pub on_close: Callback<()>,
 }
 
@@ -29,7 +29,7 @@ pub fn finalization_modal(props: &FinalizationModalProps) -> Html {
                     { for props.refused.iter().map(refused_row) }
                 </ul>
                 <p style={format!("margin:0 0 22px;font-size:13.5px;line-height:1.5;color:{TEXT_MUTED_7B}")}>
-                    {"Sign all inputs, then load it again."}
+                    {"Correct the PSBT, then load it again."}
                 </p>
                 <button onclick={onclick_close} style={close_button_style()}>{"Close"}</button>
             </div>
@@ -37,14 +37,11 @@ pub fn finalization_modal(props: &FinalizationModalProps) -> Html {
     }
 }
 
-fn refused_row((name, incomplete_inputs): &(String, usize)) -> Html {
-    let suffix = if *incomplete_inputs == 1 { "" } else { "s" };
+fn refused_row((name, reason): &(String, String)) -> Html {
     html! {
-        <li style={format!("display:flex;justify-content:space-between;align-items:baseline;gap:16px;font-family:'IBM Plex Mono',monospace;font-size:13px;color:{TEXT_PRIMARY}")}>
-            <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{name.clone()}</span>
-            <span style={format!("flex:none;color:{TEXT_MUTED_7B}")}>
-                {format!("{incomplete_inputs} input{suffix} incomplete")}
-            </span>
+        <li style={format!("font-family:'IBM Plex Mono',monospace;font-size:13px;color:{TEXT_PRIMARY}")}>
+            <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{name.clone()}</div>
+            <div style={format!("margin-top:3px;color:{TEXT_MUTED_7B};font-size:11.5px;line-height:1.45")}>{reason.clone()}</div>
         </li>
     }
 }
