@@ -47,20 +47,19 @@ fi
 
 [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
 
-log_info "building broadcast-api"
-(cd "$PROJECT_ROOT" && cargo build --release -p broadcast-api)
-
 log_info "building broadcast-frontend"
 (cd "$PROJECT_ROOT/crates/broadcast-frontend" && trunk build --release)
-
-log_info "installing binary"
-sudo install -m 755 "$PROJECT_ROOT/target/release/broadcast-api" /usr/local/bin/broadcast-api
 
 log_info "installing frontend assets"
 sudo rsync -a --delete "$PROJECT_ROOT/crates/broadcast-frontend/dist/" /var/www/outofband/
 
-log_info "installing systemd unit"
-sudo cp "$PROJECT_ROOT/deploy/systemd/broadcast-api.service" /etc/systemd/system/broadcast-api.service
+# the frontend talks to Slipstream directly, so the relay service is no longer deployed
+if sudo systemctl disable --now broadcast-api 2>/dev/null; then
+  log_info "stopped and disabled broadcast-api"
+else
+  log_info "broadcast-api service not found, nothing to stop"
+fi
+sudo rm -f /etc/systemd/system/broadcast-api.service /usr/local/bin/broadcast-api
 sudo systemctl daemon-reload
 
 log_info "installing nginx snippets"
@@ -86,15 +85,12 @@ else
       "$PROJECT_ROOT/deploy/nginx/outofband.conf" | sudo tee "$NGINX_SITE" >/dev/null
 fi
 
-log_info "restarting broadcast-api"
-sudo systemctl restart broadcast-api
-
 log_info "reloading nginx"
 sudo nginx -t
 sudo systemctl reload nginx
 
-log_info "checking health endpoint"
-curl -sf http://127.0.0.1/health >/dev/null || die "health check failed: http://127.0.0.1/health did not respond"
-log_info "health check passed"
+log_info "checking the site responds"
+curl -sf http://127.0.0.1/ >/dev/null || die "http://127.0.0.1/ did not respond"
+log_info "site check passed"
 
 log_info "update complete"

@@ -106,14 +106,10 @@ log_info "creating system user and directories"
 id outofband >/dev/null 2>&1 || sudo useradd --system --no-create-home --shell /usr/sbin/nologin outofband
 sudo mkdir -p /etc/outofband /opt/outofband /var/www/outofband
 
-log_info "building broadcast-api"
-(cd "$PROJECT_ROOT" && cargo build --release -p broadcast-api)
-
 log_info "building broadcast-frontend"
 (cd "$PROJECT_ROOT/crates/broadcast-frontend" && trunk build --release)
 
 log_info "installing artifacts"
-sudo install -m 755 "$PROJECT_ROOT/target/release/broadcast-api" /usr/local/bin/broadcast-api
 sudo rsync -a --delete "$PROJECT_ROOT/crates/broadcast-frontend/dist/" /var/www/outofband/
 
 if [ ! -f /etc/outofband/config.toml ]; then
@@ -126,11 +122,14 @@ else
   log_info "config already exists at /etc/outofband/config.toml, leaving it untouched"
 fi
 
-log_info "installing systemd unit"
-sudo cp "$PROJECT_ROOT/deploy/systemd/broadcast-api.service" /etc/systemd/system/broadcast-api.service
+# the frontend talks to Slipstream directly, so the relay service is no longer deployed
+if sudo systemctl disable --now broadcast-api 2>/dev/null; then
+  log_info "stopped and disabled broadcast-api"
+else
+  log_info "broadcast-api service not found, nothing to stop"
+fi
+sudo rm -f /etc/systemd/system/broadcast-api.service /usr/local/bin/broadcast-api
 sudo systemctl daemon-reload
-sudo systemctl enable broadcast-api
-sudo systemctl restart broadcast-api
 
 log_info "installing nginx snippets"
 sudo cp "$PROJECT_ROOT/deploy/nginx/outofband-zone.conf" /etc/nginx/conf.d/outofband-zone.conf
@@ -158,9 +157,9 @@ sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 sudo systemctl reload nginx
 
-log_info "checking health endpoint"
-curl -sf http://127.0.0.1/health >/dev/null || die "health check failed: http://127.0.0.1/health did not respond"
-log_info "health check passed"
+log_info "checking the site responds"
+curl -sf http://127.0.0.1/ >/dev/null || die "http://127.0.0.1/ did not respond"
+log_info "site check passed"
 
 CERT_ISSUED=0
 if [ -n "$DOMAIN" ]; then
@@ -180,7 +179,6 @@ fi
 
 log_info "install complete, remaining manual steps:"
 log_info "  - set the real server_name in /etc/nginx/sites-available/outofband.conf, then: sudo systemctl reload nginx"
-log_info "  - fill client_code in /etc/outofband/config.toml, then: sudo systemctl restart broadcast-api"
 if [ "$CERT_ISSUED" -eq 0 ]; then
   log_info "  - once DNS points at this host: sudo certbot --nginx -d <domain> --redirect --agree-tos -m <email> -n"
 fi
