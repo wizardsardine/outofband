@@ -10,6 +10,9 @@ use super::{Plurals, Strings};
 pub static STRINGS: Strings = Strings {
     page_title: "Outofband: Broadcast напрямую майнеру",
     lang_picker_label: "Язык",
+    ai_notice: "Этот перевод сделан ИИ и не проверен носителем языка. Если он расходится с \
+        английским, верным считается английский.",
+    ai_notice_action: "Read in English",
 
     disclosure_label: "Уведомление о безопасности",
     disclosure_link: "Уязвимость ГСЧ в Coldcard, и почему вам может понадобиться этот инструмент",

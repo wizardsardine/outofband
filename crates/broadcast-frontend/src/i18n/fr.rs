@@ -7,6 +7,9 @@ use super::{Plurals, Strings};
 pub static STRINGS: Strings = Strings {
     page_title: "Outofband : diffusion directe au mineur",
     lang_picker_label: "Langue",
+    ai_notice: "Cette traduction a été produite par une IA et n'a pas été relue par un \
+        locuteur natif. En cas de divergence avec l'anglais, c'est l'anglais qui fait foi.",
+    ai_notice_action: "Read in English",
 
     disclosure_label: "Avis de sécurité",
     disclosure_link: "Vulnérabilité du RNG Coldcard, et pourquoi cet outil peut vous être utile",

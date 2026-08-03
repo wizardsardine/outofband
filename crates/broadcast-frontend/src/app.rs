@@ -2,7 +2,7 @@ use yew::prelude::*;
 
 use crate::components::{
     ContextBanner, DisclosureStrip, Faq, FinalizationModal, Footer, Hero, PasteBox, PrepareStep,
-    QueueTable, StatStrip,
+    QueueTable, StatStrip, TranslationNotice,
 };
 use crate::hooks::{LangHandle, use_fee, use_file_load, use_lang_state, use_mobile, use_queue};
 
@@ -19,6 +19,7 @@ pub fn app() -> Html {
         <ContextProvider<LangHandle> context={lang}>
         <div style="min-height:100vh;background:#000;color:#f4f4f4;font-family:'IBM Plex Sans',system-ui,sans-serif">
             <DisclosureStrip />
+            <TranslationNotice />
             <div style="padding:0 6%">
                 <div style="max-width:1280px;margin:0 auto">
                     <ContextBanner />

@@ -79,11 +79,11 @@ pub fn use_t() -> &'static Strings {
     use_lang().lang.strings()
 }
 
+/// No `reviewed()` filter here: an unreviewed language is offered, so it
+/// is also detected. Landing a French reader on French with the notice
+/// showing beats landing them on English they may not read.
 fn initial_lang() -> Lang {
-    stored()
-        .or_else(from_browser)
-        .filter(|lang| lang.reviewed())
-        .unwrap_or(Lang::En)
+    stored().or_else(from_browser).unwrap_or(Lang::En)
 }
 
 fn document() -> Option<web_sys::Document> {

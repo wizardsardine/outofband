@@ -1,6 +1,5 @@
 use yew::prelude::*;
 
-use crate::components::LangPicker;
 use crate::hooks::use_t;
 use crate::i18n::{RichStyles, rich};
 use crate::tokens::{BODY_COPY, HAIRLINE};
@@ -19,7 +18,6 @@ pub fn footer() -> Html {
                 { rich(t.footer_built_by, &RichStyles::plain()) }
             </span>
             <div style="display:flex;gap:22px;align-items:center;font-size:13.5px">
-                <LangPicker />
                 <a href="https://wizardsardine.com/blog/coldcard-rng-vulnerability/" target="_blank" rel="noopener noreferrer">{t.footer_disclosure}</a>
                 <a href="https://slipstream.mara.com/" target="_blank" rel="noopener noreferrer">{t.footer_slipstream_terms}</a>
             </div>

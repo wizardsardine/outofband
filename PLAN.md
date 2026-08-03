@@ -737,13 +737,30 @@ browser because a reader who picked a language here meant it. The choice
 persists in `localStorage` under `outofband.lang`, and drives `<html lang>`
 and the tab title.
 
-**Unreviewed locales do not ship.** `Lang::reviewed` gates a language out
-of the switcher until a native speaker signs it off, and the switcher hides
-itself entirely while English is the only one left. This page tells people
-not to press a broadcast button; a mistranslation there costs someone their
-coins, so the machinery ships first and the languages light up one at a
-time. The five drafts in the tree were written by an LLM and are all marked
-unreviewed.
+**Unreviewed locales ship, labelled.** `Lang::reviewed` no longer decides
+whether a language exists, only whether it carries a notice. An unreviewed
+language is offered in the switcher and detected from the browser, and the
+page shows a bar under the disclosure strip saying the text was produced by
+an AI, that English is authoritative, and offering a `Read in English`
+button back to it. The notice is written in the reader's own language,
+because the reader who needs it is the one who cannot read the English.
+
+That is a deliberate trade against the earlier gate: hiding a language
+means a reader who cannot read English gets nothing at all, and a flagged
+imperfect translation beats no translation for someone trying to understand
+a warning. Flipping `reviewed` for a language removes its notice; do it in
+the same commit that records who reviewed it. All five non-English
+catalogues are LLM drafts and currently unreviewed.
+
+The notice is deliberately **not** in the warning palette. Amber on this
+page means "this could cost you coins", and spending it on a provenance
+note would blunt the two places that need it.
+
+The language picker is a `<select>` at the right of the sticky disclosure
+strip, so it is reachable from anywhere on the page. It offers every
+language, endonyms only. No flags: flags name countries, and there is no
+flag for Spanish or Portuguese that does not tell most of their speakers
+the page is for someone else.
 
 Not translated, deliberately: format names and units (`PSBT · base64`,
 `sat/vB`, file extensions), which are identifiers; MARA's rejection text,

@@ -96,11 +96,13 @@ impl Lang {
 
     /// Whether a native speaker has signed the translation off.
     ///
-    /// This page tells people not to press a broadcast button, and a
-    /// mistranslation there costs someone their coins. Unreviewed locales
-    /// stay out of the switcher: the machinery ships, the languages appear
-    /// one at a time as somebody vouches for them. Flip a flag here in the
-    /// same commit that records who reviewed it.
+    /// Unreviewed languages **are** offered, and carry a notice saying the
+    /// text is machine-translated and that English is authoritative. That
+    /// is a deliberate trade: hiding them means a reader who cannot read
+    /// English gets nothing, and a flagged imperfect translation beats no
+    /// translation for someone trying to understand a warning. Flip a flag
+    /// here in the same commit that records who reviewed it; the notice
+    /// disappears for that language when you do.
     pub fn reviewed(self) -> bool {
         match self {
             Lang::En => true,
@@ -108,9 +110,10 @@ impl Lang {
         }
     }
 
-    /// Languages the switcher offers. Always contains at least English.
+    /// Languages the switcher offers: all of them. Reviewed or not decides
+    /// whether the notice shows, not whether the language exists.
     pub fn offered() -> Vec<Lang> {
-        Lang::ALL.into_iter().filter(|l| l.reviewed()).collect()
+        Lang::ALL.to_vec()
     }
 
     /// Matches a browser tag such as `pt-BR`, `pt`, or `es-419`.
@@ -226,6 +229,12 @@ pub struct Strings {
     // Document
     pub page_title: &'static str,
     pub lang_picker_label: &'static str,
+    /// Shown while an unreviewed translation is active. Written in that
+    /// language, since the reader who needs it is reading that language.
+    pub ai_notice: &'static str,
+    /// The escape hatch beside it. Always says "English" in English: a
+    /// reader who wants the authoritative text is looking for that word.
+    pub ai_notice_action: &'static str,
 
     // Disclosure strip
     pub disclosure_label: &'static str,
@@ -393,8 +402,27 @@ mod tests {
     }
 
     #[test]
-    fn english_is_always_offered() {
-        assert!(Lang::offered().contains(&Lang::En));
+    fn every_language_is_offered_and_english_needs_no_notice() {
+        assert_eq!(Lang::offered().len(), Lang::ALL.len());
+        assert!(
+            Lang::En.reviewed(),
+            "English is the source, not a translation"
+        );
+    }
+
+    #[test]
+    fn every_unreviewed_language_can_explain_itself() {
+        // The notice is the only thing standing between a reader and an
+        // unreviewed instruction, so it cannot be missing or English-only.
+        for lang in Lang::ALL.into_iter().filter(|l| !l.reviewed()) {
+            let s = lang.strings();
+            assert!(!s.ai_notice.trim().is_empty(), "{lang:?} ai_notice");
+            assert!(
+                s.ai_notice_action.contains("English"),
+                "{lang:?} ai_notice_action must name English in English: {}",
+                s.ai_notice_action
+            );
+        }
     }
 
     #[test]

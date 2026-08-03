@@ -6,6 +6,9 @@ use super::{Plurals, Strings};
 pub static STRINGS: Strings = Strings {
     page_title: "Outofband: direct-to-miner broadcast",
     lang_picker_label: "Language",
+    ai_notice: "This translation was produced by an AI and has not been reviewed by a \
+        native speaker. Where it differs from the English, the English is correct.",
+    ai_notice_action: "Read in English",
 
     disclosure_label: "Security disclosure",
     disclosure_link: "Coldcard RNG vulnerability, and why you might need this tool",

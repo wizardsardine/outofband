@@ -10,6 +10,9 @@ use super::{Plurals, Strings};
 pub static STRINGS: Strings = Strings {
     page_title: "Outofband: Broadcast direto ao minerador",
     lang_picker_label: "Idioma",
+    ai_notice: "Esta tradução foi feita por uma IA e não foi revisada por um falante \
+        nativo. Onde divergir do inglês, o inglês é que vale.",
+    ai_notice_action: "Read in English",
 
     disclosure_label: "Aviso de segurança",
     disclosure_link: "Vulnerabilidade do RNG da Coldcard, e por que você pode precisar desta \

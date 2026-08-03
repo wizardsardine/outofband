@@ -1,5 +1,6 @@
 use yew::prelude::*;
 
+use crate::components::LangPicker;
 use crate::hooks::use_t;
 use crate::tokens::{NOTE_CARD_WARN, TEXT_PRIMARY, WARNING};
 
@@ -44,6 +45,12 @@ pub fn disclosure_strip() -> Html {
                             <path d="M9 7h8v8"></path>
                         </svg>
                     </a>
+                    // `margin-left:auto` rather than a spacer: when the bar
+                    // wraps on a narrow screen the picker drops to its own
+                    // line instead of being pinned to a stretched gap.
+                    <span style="margin-left:auto;flex:none">
+                        <LangPicker />
+                    </span>
                 </div>
             </div>
         </div>

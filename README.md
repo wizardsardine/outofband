@@ -24,14 +24,18 @@ Six catalogues live in `crates/broadcast-frontend/src/i18n/`, one file per
 language. `Strings` is a struct, so adding a string will not compile until
 every language has one; that is the point.
 
-Only English is offered today. The other five are LLM drafts marked
-unreviewed in `Lang::reviewed`, and the switcher hides a language until that
-flag flips. Flip it in the same commit that records who reviewed it. A
-mistranslated "do not press the broadcast button" costs someone their coins,
-which is the whole reason for the gate.
+All six are offered, in a picker at the right of the sticky bar at the top
+of the page. The five non-English ones are LLM drafts marked unreviewed in
+`Lang::reviewed`, and while a language is unreviewed the page shows a notice
+saying so, points at English as authoritative, and offers a button back to
+it. Flipping the flag removes that notice, so flip it in the same commit
+that records who reviewed the language.
 
-To read a draft before it is signed off, flip its `reviewed` arm locally and
-`just run`.
+Terms of art stay English in every language: `PSBT`, `mempool`,
+`Broadcast`, `Fee rate`, `Export`, `Drafts and Approvals` and the rest. The
+glossary is at the top of `i18n/mod.rs` and a test enforces it. Bitcoiners
+run English software, and a reader hunting for the Broadcast button is not
+helped by being told about "diffusion".
 
 ## Development
 

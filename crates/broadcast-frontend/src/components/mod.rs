@@ -11,6 +11,7 @@ pub mod prepare_step;
 pub mod queue_row;
 pub mod queue_table;
 pub mod stat_strip;
+pub mod translation_notice;
 
 pub use context_banner::ContextBanner;
 pub use disclosure_strip::DisclosureStrip;
@@ -23,3 +24,4 @@ pub use paste_box::PasteBox;
 pub use prepare_step::PrepareStep;
 pub use queue_table::QueueTable;
 pub use stat_strip::StatStrip;
+pub use translation_notice::TranslationNotice;
