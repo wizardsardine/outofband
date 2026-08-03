@@ -120,6 +120,20 @@ fn entries() -> Vec<(&'static str, Html)> {
                   does not take any share of the payment, or any compensation."}
             },
         ),
+        // "Will not get mined", not "is rejected": a parent under the
+        // displayed floor but over `submit_fee_rate` is accepted and then
+        // never mined (section 2 of PLAN.md), so only the mining claim holds
+        // for every low-fee parent a reader might have in mind.
+        (
+            "Can a second transaction pay the fee for a low-fee one (CPFP)?",
+            html! {
+                {"No. Slipstream looks at every transaction on its own, so one that does not pay \
+                  enough will not get mined here — even if you send another one paying extra to \
+                  cover it. You can still send several related transactions, as long as each pays \
+                  enough by itself: name the files 01, 02, 03 and they go out in that order. If you \
+                  need one transaction to pay for another, contact MARA directly."}
+            },
+        ),
         (
             "What are the risks of using this service?",
             html! {

@@ -461,7 +461,8 @@ fee rate, and sequential ordering cannot rescue it. Ordering guarantees
 (section 1) still hold for chains where each transaction independently
 clears the floor — a parent funding a child — but a package whose parent
 depends on its child's fee must be submitted through MARA directly. This
-is stated in the README rather than left for a user to discover. Adding a
+is stated in the README and, in plain words, in the FAQ (section 4),
+rather than left for a user to discover. Adding a
 package path would mean a second request shape, a second queue mode, and
 an ordering the user has to declare rather than one derived from file
 names; it is a documented follow-up, not a first release.
@@ -930,9 +931,9 @@ single item without touching the rest.
 FAQ: under the eyebrow "Questions you should ask before using this", an
 accordion (single-open, chevron rotating 180° over `.2s`, teal when open)
 in a `22px 2px 22px 2px` card, entries divided by `#1a1a1a` hairlines
-except the last. Seven questions (departure 11 — the mockup has five, and
-its wording predates both the audience scoping above and three questions
-it never asked):
+except the last. Eight questions (departure 11 — the mockup has five, and
+its wording predates both the audience scoping above and four questions it
+never asked):
 
 1. "Why is this tool helpful?" — the replacement attack in full: a normal
    broadcast gossips to every node, a holder of a key that can also spend
@@ -950,14 +951,24 @@ it never asked):
    the floor's meaning now lives on the fee card itself (departure 10),
    and the question a user actually has when comparing against a block
    explorer is where the difference goes.
-6. "What are the risks of using this service?" — MARA has to be trusted
+6. "Can a second transaction pay the fee for a low-fee one (CPFP)?" — no,
+   because Slipstream prices each submission alone (section 2). The answer
+   is worded for a reader who has never met the acronym: every transaction
+   is judged on its own, so an underpaying one is not mined here even with
+   a second one covering it; ordered chains still work where each
+   transaction pays enough by itself; and a genuine CPFP pair goes to MARA
+   directly. It says "will not get mined" rather than "is rejected" for
+   the same reason the fee card does (departure 8) — a parent between
+   `submit_fee_rate` and `effective_rate` is accepted and then never
+   mined, so only the mining claim is true of every low-fee parent.
+7. "What are the risks of using this service?" — MARA has to be trusted
    not to run the replacement attack itself, which is one party to trust
    against the whole network.
-7. "Why is this page on the Wizardsardine domain?" — Wizardsardine
+8. "Why is this page on the Wizardsardine domain?" — Wizardsardine
    maintains Liana, whose users had no easy route to Slipstream; the tool
    is open to everyone else too. Its answer links `lianawallet.com`.
 
-Answers are `Html`, not `String`, so question 7 can carry that link, and
+Answers are `Html`, not `String`, so question 8 can carry that link, and
 none of them interpolate the live rate: the fee card owns that number, and
 the old answer 5 gave two places to read the same figure from. Answer 2
 says "when you press Send" — the mockup's "when you press Broadcast" names
@@ -1056,13 +1067,15 @@ reproduced, not a decision to be revisited.
     number displayed when it was drafted can be under the floor by the
     time it is submitted — the same accepted-then-never-mined band as
     departure 8, reached by a different route.
-11. **The FAQ asks seven questions, not the mockup's five.** Two of the
+11. **The FAQ asks eight questions, not the mockup's five.** Two of the
     mockup's are aimed at the wrong thing — it asks whether the tool keeps
     a transaction out of the mempool (a mechanism, not a reason) and why a
     fee floor exists at all (now answered on the fee card itself) — and it
     never asks what the risks are, why the rate differs from a block
-    explorer, or why this is hosted on a wallet company's domain. Those
-    are the questions a visitor arrives with, and the last is the one that
+    explorer, whether CPFP works, or why this is hosted on a wallet
+    company's domain. Those are the questions a visitor arrives with; the
+    CPFP one is the only place the page states that limitation to a user
+    rather than to a reader of the README, and the last is the one that
     decides whether they trust the page enough to paste into it.
 
 Beyond these, the mockup's logic is prop scaffolding wherever it stands in
