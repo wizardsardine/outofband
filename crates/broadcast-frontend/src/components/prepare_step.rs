@@ -26,6 +26,13 @@ pub fn prepare_step() -> Html {
     let aside_style = format!(
         "margin:18px 0 0;font-size:{PROSE_SIZE};line-height:1.6;color:{PROSE};max-width:88ch;text-wrap:pretty"
     );
+    // Muted and last: a note about what this page will carry later, not an
+    // instruction for today. It still earns its place — "wait and check
+    // back" is a real option here, and a better one than guessing at a
+    // wallet's signing flow when guessing wrong means a public broadcast.
+    let pending_style = format!(
+        "margin:14px 0 0;font-size:14px;line-height:1.6;color:{BODY_COPY};max-width:88ch;text-wrap:pretty"
+    );
     let ui_name_style = format!("color:{TEXT_PRIMARY};font-weight:600");
     let emphasis_style = format!("color:{TEXT_PRIMARY};font-weight:600");
     let shout_style = format!("color:{WARNING};font-weight:700");
@@ -65,6 +72,11 @@ pub fn prepare_step() -> Html {
                 {". Not all software lets you sign without broadcasting, so check its \
                   documentation before you sign if you are unsure. Liana users, just read the card \
                   above."}
+            </p>
+            <p style={pending_style}>
+                {"Links to tutorials from educators will be added to this page once they are \
+                  ready. If you are unsure how to do this with your wallet, you can wait and check \
+                  back here later."}
             </p>
         </div>
     }

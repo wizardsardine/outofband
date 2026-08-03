@@ -781,11 +781,21 @@ at weight 700 — and click **Export** instead, that file being what the next
 step loads; then, muted, that a transaction signed without saving the PSBT
 can be found again under **Drafts and Approvals**. Liana UI names are
 picked out in `#f4f4f4`/600 so they read as things to look for on screen.
-Below the card, outside it, one muted line for everyone else: this tool
-works with whatever PSBT your wallet exports. The warning palette is not
-decoration — the broadcast button sits one click from Export, and pressing
-it puts the transaction in the public mempool, which is the single outcome
-this page exists to avoid.
+Below the card, outside it and in prose rather than the warning palette,
+the instruction for every other wallet: build and sign normally but **do
+not broadcast it to the Bitcoin network** (picked out in `#f4f4f4`/600),
+noting that not all software separates the two, so its documentation is
+worth checking before signing. A second amber block beside the first would
+flatten both, so the emphasis carries it instead. Last, muted at 14px in
+`#909090`, a note that links to tutorials from educators will be added
+here once ready and that waiting to check back is an option — the page
+would rather a confused user return than guess at a signing flow, since
+guessing wrong is a public broadcast. The three tiers are deliberate:
+warning card, prose, then muted future-tense.
+
+The warning palette on the card is not decoration — the broadcast button
+sits one click from Export, and pressing it puts the transaction in the
+public mempool, which is the single outcome this page exists to avoid.
 
 Load transactions: heading plus the mockup's sentence, capped at `70ch` —
 "Paste or drop signed PSBTs and raw transactions. Your browser sends each
