@@ -1,7 +1,7 @@
 use yew::prelude::*;
 
 use crate::tokens::{
-    ACCENT_TEAL, BODY_COPY, BORDER_STRONG, HAIRLINE, TEXT_MUTED_6A, TEXT_MUTED_7B,
+    ACCENT_TEAL, BORDER_STRONG, HAIRLINE, PROSE, PROSE_SIZE, TEXT_MUTED_6A, TEXT_MUTED_7B,
 };
 
 #[function_component(Faq)]
@@ -47,7 +47,7 @@ fn faq_entry(
         "display:flex;flex:none;color:{icon_color};transition:transform .2s ease-in-out;transform:rotate({rotation}deg)"
     );
     let answer_style = format!(
-        "margin:0;padding:0 20px 10px;font-size:13.5px;line-height:1.65;color:{BODY_COPY};max-width:90ch;text-wrap:pretty"
+        "margin:0;padding:0 20px 12px;font-size:{PROSE_SIZE};line-height:1.65;color:{PROSE};max-width:90ch;text-wrap:pretty"
     );
     let onclick = {
         let open = open.clone();
@@ -56,7 +56,7 @@ fn faq_entry(
 
     html! {
         <div style={wrap_style}>
-            <button {onclick} style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:20px;text-align:left;border:0;background:none;color:#f4f4f4;font-family:inherit;font-size:14px;font-weight:600;line-height:1.25;padding:6px 20px;cursor:pointer">
+            <button {onclick} style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:20px;text-align:left;border:0;background:none;color:#f4f4f4;font-family:inherit;font-size:15px;font-weight:600;line-height:1.25;padding:8px 20px;cursor:pointer">
                 <span>{question}</span>
                 <span style={icon_style}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>

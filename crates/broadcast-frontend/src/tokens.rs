@@ -15,6 +15,13 @@ pub const TEXT_PLACEHOLDER: &str = "#454545";
 pub const FIELD_TEXT: &str = "#e6e6e6";
 pub const TEXT_SECONDARY: &str = "#a1a1a1";
 pub const BODY_COPY: &str = "#909090";
+/// Explanatory prose — the paragraphs meant to be read rather than scanned:
+/// the context banner, the prepare step, the load blurb, the fee sentence
+/// and the FAQ answers. Brighter and a step larger than the chrome greys,
+/// because at [`BODY_COPY`] and 13.5px on a pure black page they read as
+/// captions when they are actually instructions.
+pub const PROSE: &str = "#b5b5b5";
+pub const PROSE_SIZE: &str = "15px";
 pub const CARD_NESTED: &str = "#060606";
 pub const TEXT_PRIMARY: &str = "#f4f4f4";
 pub const ACCENT_TEAL: &str = "#5fe7e4";

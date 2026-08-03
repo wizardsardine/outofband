@@ -4,8 +4,8 @@ use web_sys::{DragEvent, HtmlInputElement, HtmlTextAreaElement};
 use yew::prelude::*;
 
 use crate::tokens::{
-    self, ACCENT_TEAL, BORDER_STRONG, CARD_NESTED, FIELD_TEXT, NOTE_CARD_ERROR, SURFACE_DRAG_OVER,
-    SURFACE_PARSE_ERROR, TEXT_MUTED_6A, TEXT_MUTED_7B, TEXT_SECONDARY,
+    self, ACCENT_TEAL, BODY_COPY, BORDER_STRONG, CARD_NESTED, FIELD_TEXT, NOTE_CARD_ERROR, PROSE,
+    PROSE_SIZE, SURFACE_DRAG_OVER, SURFACE_PARSE_ERROR, TEXT_MUTED_6A, TEXT_SECONDARY,
 };
 
 const PLACEHOLDER: &str = "cHNidP8BAHECAAAAAf8Zj1...\n\nor\n\n02000000000101ef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a...\n\nor drop a file here";
@@ -170,7 +170,7 @@ pub fn paste_box(props: &PasteBoxProps) -> Html {
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:18px">
                 <div>
                     <h2 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-.2px">{"Load transactions"}</h2>
-                    <p style={format!("margin:7px 0 0;font-size:13.5px;line-height:1.55;color:{TEXT_MUTED_7B};max-width:70ch")}>
+                    <p style={format!("margin:8px 0 0;font-size:{PROSE_SIZE};line-height:1.55;color:{PROSE};max-width:70ch")}>
                         {"Paste or drop signed PSBTs and raw transactions. Your browser sends each one straight to MARA Slipstream, which mines it without ever touching the public mempool."}
                     </p>
                 </div>
@@ -209,7 +209,7 @@ pub fn paste_box(props: &PasteBoxProps) -> Html {
                     </svg>
                     {"Choose files"}
                 </button>
-                <span style={format!("font-size:12.5px;color:{TEXT_MUTED_6A}")}>{"Files, folders or archives: .txt .psbt .txn .tar .tar.gz .zip"}</span>
+                <span style={format!("font-size:13.5px;color:{BODY_COPY}")}>{"Files, folders or archives: .txt .psbt .txn .tar .tar.gz .zip"}</span>
                 if props.has_items {
                     <button
                         onclick={onclick_clear}

@@ -2,8 +2,8 @@ use yew::prelude::*;
 
 use crate::hooks::fee::FeeSnapshot;
 use crate::tokens::{
-    BODY_COPY, BORDER_STRONG, FEE_NUMBER_GRADIENT, FEE_POLL_INTERVAL_MS, NOTE_CARD_WARN, RULE,
-    TEXT_MUTED_7B, TEXT_SECONDARY, WARNING,
+    BORDER_STRONG, FEE_NUMBER_GRADIENT, FEE_POLL_INTERVAL_MS, NOTE_CARD_WARN, PROSE, PROSE_SIZE,
+    RULE, TEXT_MUTED_7B, TEXT_SECONDARY, WARNING,
 };
 
 #[derive(Properties, PartialEq)]
@@ -29,15 +29,15 @@ pub fn fee_card(props: &FeeCardProps) -> Html {
         format!("font-family:'IBM Plex Mono',monospace;font-size:22px;color:{TEXT_SECONDARY}");
     let rule_style = format!("height:1px;background:{RULE};margin:26px 0 20px");
     let sentence_style =
-        format!("margin:0;font-size:14px;line-height:1.6;color:{BODY_COPY};text-wrap:pretty");
+        format!("margin:0;font-size:{PROSE_SIZE};line-height:1.6;color:{PROSE};text-wrap:pretty");
     let stale_note_style =
-        format!("margin:10px 0 0;font-size:12.5px;line-height:1.5;color:{WARNING}");
+        format!("margin:10px 0 0;font-size:13px;line-height:1.5;color:{WARNING}");
     let (note_border, note_edge, note_text) = NOTE_CARD_WARN;
     let advice_card_style = format!(
         "border:1px solid {note_border};border-left:3px solid {note_edge};border-radius:2px;background:#100d06;padding:13px 15px;margin-top:16px"
     );
     let advice_text_style =
-        format!("margin:0;font-size:13px;line-height:1.6;color:{note_text};text-wrap:pretty");
+        format!("margin:0;font-size:14px;line-height:1.6;color:{note_text};text-wrap:pretty");
     let advice_emphasis_style = format!("color:{WARNING};font-weight:600");
     let refresh_seconds = FEE_POLL_INTERVAL_MS / 1_000;
 

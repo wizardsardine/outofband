@@ -1,6 +1,6 @@
 use yew::prelude::*;
 
-use crate::tokens::{ACCENT_TEAL, BORDER_STRONG, TEXT_PRIMARY, TEXT_SECONDARY, WARNING};
+use crate::tokens::{ACCENT_TEAL, BORDER_STRONG, PROSE, PROSE_SIZE, TEXT_PRIMARY, WARNING};
 
 /// Who this tool is for, and — more importantly — who it is not for. The
 /// second line is the one that matters: someone whose keys are already
@@ -13,11 +13,11 @@ pub fn context_banner() -> Html {
         "border:1px solid {BORDER_STRONG};border-left:3px solid {ACCENT_TEAL};border-radius:2px;background:#0c0c0c;padding:18px 26px;margin-top:16px"
     );
     let text_style = format!(
-        "margin:0;font-size:14.5px;line-height:1.6;color:{TEXT_SECONDARY};max-width:96ch;text-wrap:pretty"
+        "margin:0;font-size:{PROSE_SIZE};line-height:1.6;color:{PROSE};max-width:96ch;text-wrap:pretty"
     );
     let warning_row_style = "display:flex;gap:10px;margin:12px 0 0;max-width:96ch";
     let warning_text_style = format!(
-        "margin:0;font-size:14.5px;line-height:1.6;color:{WARNING};text-wrap:pretty;min-width:0"
+        "margin:0;font-size:{PROSE_SIZE};line-height:1.6;color:{WARNING};text-wrap:pretty;min-width:0"
     );
     let emphasis_style = format!("color:{TEXT_PRIMARY};font-weight:600");
 

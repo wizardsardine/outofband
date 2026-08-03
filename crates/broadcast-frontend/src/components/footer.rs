@@ -1,13 +1,13 @@
 use yew::prelude::*;
 
-use crate::tokens::{HAIRLINE, TEXT_MUTED_6A};
+use crate::tokens::{BODY_COPY, HAIRLINE};
 
 #[function_component(Footer)]
 pub fn footer() -> Html {
     let row_style = format!(
         "display:flex;flex-wrap:wrap;gap:20px;justify-content:space-between;align-items:center;padding:56px 0 64px;margin-top:60px;border-top:1px solid {HAIRLINE}"
     );
-    let attribution_style = format!("font-size:13px;color:{TEXT_MUTED_6A}");
+    let attribution_style = format!("font-size:13.5px;color:{BODY_COPY}");
 
     html! {
         <div style={row_style}>
@@ -15,7 +15,7 @@ pub fn footer() -> Html {
                 {"Built by "}
                 <a href="https://wizardsardine.com" target="_blank" rel="noopener noreferrer">{"Wizardsardine"}</a>
             </span>
-            <div style="display:flex;gap:22px;font-size:13px">
+            <div style="display:flex;gap:22px;font-size:13.5px">
                 <a href="https://wizardsardine.com/blog/coldcard-rng-vulnerability/" target="_blank" rel="noopener noreferrer">{"Disclosure"}</a>
                 <a href="https://slipstream.mara.com/" target="_blank" rel="noopener noreferrer">{"Slipstream terms"}</a>
             </div>

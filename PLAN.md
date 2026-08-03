@@ -136,7 +136,7 @@ seconds before giving up.
   failure, or a 429 that outlasts the retries, marks the row and pauses
   the run.
 - `UI_MOCKUP.html` at the repo root is the authoritative visual
-  reference. Section 4 transcribes it and lists the twelve deliberate
+  reference. Section 4 transcribes it and lists the thirteen deliberate
   departures; anything not on that list is a detail to reproduce.
 
 ### Deployment
@@ -599,7 +599,7 @@ calls `tx-core` directly in wasm. This crate is the whole product.
 `UI_MOCKUP.html` at the repository root is the **authoritative visual
 reference**. Where this section and the mockup disagree on layout, color,
 spacing, radius, sizing or copy, the mockup wins and this section is to be
-corrected, with the sole exception of the twelve departures enumerated at
+corrected, with the sole exception of the thirteen departures enumerated at
 the end of this section, which exist because the mockup is a static prop:
 it simulates behavior it does not implement, encodes a queue policy
 that has since been reversed, and carries copy that has since been
@@ -619,8 +619,9 @@ wizardsardine.com) is the origin of the palette.
 
 Dark theme throughout. Background `#000000`; cards `#0c0c0c` (nested
 `#060606`); borders `#2a2a2a` (strong) and `#1f1f1f`/`#1a1a1a` (hairline);
-text `#f4f4f4` (primary), `#e6e6e6` (field text), `#a1a1a1` (secondary),
-`#909090` (body copy in cards), `#7b7b7b`/`#6a6a6a` (muted), `#4a4a4a`
+text `#f4f4f4` (primary), `#e6e6e6` (field text), `#b5b5b5` (prose),
+`#a1a1a1` (secondary), `#909090` (body copy in cards),
+`#7b7b7b`/`#6a6a6a` (muted), `#4a4a4a`
 (disabled), `#454545` (placeholder). Accent teal `#5fe7e4`/`#61ffe1` for
 primary actions, success, and hovers; red `#ef445f` for errors/Below floor;
 amber `#e0b341` for warnings; `#b0def0` for links and in-flight.
@@ -669,11 +670,24 @@ Typography: IBM Plex Sans for prose/UI, IBM Plex Mono for all numbers,
 hashes, labels and chips — both bundled locally as woff2 via trunk assets,
 no external font CDN. (The mockup's bundle also carries Satoshi and
 Poppins from the wider design system; the page uses neither, so they are
-not shipped.) Sizes as in the mockup: hero headline 64px desktop /
-38px mobile, fee number 124px / 76px (line-height `.86`, letter-spacing
-`-4px` / `-2px`), section headings 26px/600, body 13.5px, captions
-12.5px, eyebrows 11–13px/500 uppercase with 1.2–1.6px letter-spacing,
-mono chips 11px, row name 13px mono, row fee rate 17px/600 mono.
+not shipped.) Sizes mostly as in the mockup: hero headline 48px desktop /
+31px mobile (down from 64/38 for the longer headline, as the hero section
+above explains), fee number
+124px / 76px (line-height `.86`, letter-spacing
+`-4px` / `-2px`), section headings 26px/600, eyebrows 11–13px/500
+uppercase with 1.2–1.6px letter-spacing, mono chips 11px, row name 13px
+mono, row fee rate 17px/600 mono.
+
+**Prose is 15px in `#b5b5b5`** (`PROSE_SIZE`/`PROSE`), not the mockup's
+13.5px in `#909090` — departure 13. Every paragraph a visitor is meant to
+read rather than scan takes it: the context banner, both prepare-step
+paragraphs, the load blurb, the fee sentence and the FAQ answers, with FAQ
+questions raised to 15px so a question never reads smaller than its own
+answer. Warn-card text inside those sections keeps its `#c9bb95` but takes
+the same step up. Dense chrome does not move — table rows, stat cells,
+eyebrows, mono labels and the file-type hint stay where the mockup put
+them, since the complaint the change answers is about reading, not about
+scanning a queue.
 
 Distinctive card shape: asymmetric border radius — `44px 2px 44px 2px` on
 the fee card, `44px 2px 0 0` on the queue stat strip, `0 0 44px 2px` on
@@ -1016,7 +1030,7 @@ from the live API (section 2).
 
 ### Deliberate departures from the mockup
 
-The mockup wins on everything except the following twelve points, places
+The mockup wins on everything except the following thirteen points, places
 where it simulates behavior it does not implement, encodes a queue
 policy that has since been reversed, states something the copy has since
 been corrected on, or stops short of a step real users need. Anything not
@@ -1102,6 +1116,13 @@ revisited.
     beside the one that ruins the attempt (broadcast). A page whose whole
     purpose is avoiding the public mempool cannot leave that choice
     unlabelled, so the step names both buttons and says which one to press.
+13. **Prose is 15px in `#b5b5b5`, not 13.5px in `#909090`.** The mockup's
+    body size suits a page that is mostly table, and this page has grown
+    several paragraphs a user has to actually read before pasting a
+    transaction — the audience scoping, the prepare step, the fee rule, the
+    FAQ. At the mockup's size and grey those read as captions on a pure
+    black background. Chrome keeps the mockup's scale: the change is for
+    reading, not for scanning a queue.
 
 Beyond these, the mockup's logic is prop scaffolding wherever it stands in
 for work `tx-core` and `unpack.rs` do for real: its hand-rolled JS

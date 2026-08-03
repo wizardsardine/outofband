@@ -1,6 +1,6 @@
 use yew::prelude::*;
 
-use crate::tokens::{BORDER_STRONG, ERROR_RED, TEXT_MUTED_7B, TEXT_PRIMARY};
+use crate::tokens::{BODY_COPY, BORDER_STRONG, ERROR_RED, TEXT_MUTED_7B, TEXT_PRIMARY};
 
 /// PSBTs refused at load time because `tx-core` could not finalize them
 /// (PLAN.md section 1): the one thing this UI refuses on the user's behalf,
@@ -28,7 +28,7 @@ pub fn finalization_modal(props: &FinalizationModalProps) -> Html {
                 <ul style="list-style:none;margin:18px 0;padding:0;display:flex;flex-direction:column;gap:10px">
                     { for props.refused.iter().map(refused_row) }
                 </ul>
-                <p style={format!("margin:0 0 22px;font-size:13.5px;line-height:1.5;color:{TEXT_MUTED_7B}")}>
+                <p style={format!("margin:0 0 22px;font-size:14.5px;line-height:1.55;color:{BODY_COPY}")}>
                     {"Correct the PSBT, then load it again."}
                 </p>
                 <button onclick={onclick_close} style={close_button_style()}>{"Close"}</button>

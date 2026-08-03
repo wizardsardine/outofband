@@ -1,6 +1,6 @@
 use yew::prelude::*;
 
-use crate::tokens::{NOTE_CARD_WARN, TEXT_MUTED_7B, TEXT_PRIMARY, TEXT_SECONDARY, WARNING};
+use crate::tokens::{BODY_COPY, NOTE_CARD_WARN, PROSE, PROSE_SIZE, TEXT_PRIMARY, WARNING};
 
 /// Sits directly above the paste box: the step before loading anything is
 /// getting a PSBT out of the wallet without broadcasting it, and in Liana
@@ -15,16 +15,16 @@ pub fn prepare_step() -> Html {
         "border:1px solid {note_border};border-left:3px solid {note_edge};border-radius:2px;background:#100d06;padding:18px 22px"
     );
     let note_style = format!(
-        "margin:0;font-size:14px;line-height:1.6;color:{note_text};max-width:88ch;text-wrap:pretty;min-width:0"
+        "margin:0;font-size:{PROSE_SIZE};line-height:1.6;color:{note_text};max-width:88ch;text-wrap:pretty;min-width:0"
     );
     let secondary_style = format!(
-        "margin:12px 0 0;font-size:13.5px;line-height:1.6;color:{TEXT_MUTED_7B};max-width:88ch;text-wrap:pretty"
+        "margin:12px 0 0;font-size:14px;line-height:1.6;color:{BODY_COPY};max-width:88ch;text-wrap:pretty"
     );
     // Body copy, not the muted grey an aside would get: this paragraph is
     // the instruction for every wallet that is not Liana, so it carries the
     // same weight as the card beside it.
     let aside_style = format!(
-        "margin:18px 0 0;font-size:14px;line-height:1.6;color:{TEXT_SECONDARY};max-width:88ch;text-wrap:pretty"
+        "margin:18px 0 0;font-size:{PROSE_SIZE};line-height:1.6;color:{PROSE};max-width:88ch;text-wrap:pretty"
     );
     let ui_name_style = format!("color:{TEXT_PRIMARY};font-weight:600");
     let emphasis_style = format!("color:{TEXT_PRIMARY};font-weight:600");
