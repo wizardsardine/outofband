@@ -8,3 +8,13 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+axum.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+chrono.workspace = true
+slipstream-client = { path = "../slipstream-client" }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
