@@ -47,12 +47,12 @@ fn refused_row((name, reason): &(String, String)) -> Html {
 }
 
 fn backdrop_style() -> String {
-    "position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:60;padding:24px;box-sizing:border-box".to_string()
+    "position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:flex-start;justify-content:center;z-index:60;padding:24px;box-sizing:border-box;overflow-y:auto".to_string()
 }
 
 fn card_style() -> String {
     format!(
-        "background:#0c0c0c;border:1px solid {BORDER_STRONG};border-left:3px solid {ERROR_RED};border-radius:2px;padding:28px 32px;max-width:520px;width:100%;box-sizing:border-box"
+        "background:#0c0c0c;border:1px solid {BORDER_STRONG};border-left:3px solid {ERROR_RED};border-radius:2px;padding:28px 32px;max-width:520px;width:100%;max-height:calc(100dvh - 48px);margin:auto 0;box-sizing:border-box;overflow-y:auto"
     )
 }
 
