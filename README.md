@@ -21,8 +21,9 @@ no TLS, no systemd, and no root: `broadcast-api` on `127.0.0.1:3010`, and
 frontend process exits.
 
 On first run it copies `deploy/config.toml` to `dev-config.toml` at the
-repo root (gitignored, since it may hold a real client code) and prints a
-reminder to fill in `client_code`. The page works before that: the fee
+repo root with mode `600` (gitignored, since it may hold a real client
+code) and prints a reminder to fill in `client_code`. Remote deployment
+explicitly excludes this file. The page works before that: the fee
 card polls `GET /fee`, which needs no credential, so the hero and the
 queue's analysis all work; only pressing Broadcast fails, surfacing
 Slipstream's own "Client codes are currently required to submit
@@ -59,10 +60,12 @@ against a remote host with `user@host` (rsyncs the project to
   Code-only redeploy: rebuilds the binary and the wasm frontend,
   reinstalls them plus the systemd unit and nginx site, restarts
   `broadcast-api`, reloads nginx. Never touches `/etc/outofband` or
-  certificates. If the live nginx site already has `listen 443 ssl` (i.e.
-  certbot has run), it leaves that file untouched rather than
-  re-templating over the TLS config: diff `deploy/nginx/outofband.conf`
-  against it by hand if routes or headers changed.
+  certificates. Application routes, limits, and headers live in
+  `/etc/nginx/snippets/outofband-app.conf`, which updates without replacing
+  Certbot's TLS server block. A deployment created before this split needs
+  a one-time migration: preserve its TLS and `server_name` directives and
+  replace its old application locations with `include
+  /etc/nginx/snippets/outofband-app.conf;`.
 - `just clean-local` / `just clean-remote <host>` runs `deploy/clean.sh`.
   Stops and removes the service, the nginx site, the binary, and the
   install directories. Prompts with an explicit `yes` confirmation before
@@ -122,7 +125,7 @@ Everything lives in `/etc/outofband/config.toml`, templated from
 | | `fee_poll_secs` | `60` | How often the background task refreshes the fee cache. |
 | | `rate_limit_window_secs` | `600` | Sliding-window length for the per-IP submission limiter. |
 | | `rate_limit_max_tx` | `100` | Submissions an IP may make within that window. |
-| | `max_payload_bytes` | `1048576` (1 MiB) | Cap on a `POST /broadcast` body, enforced by axum. |
+| | `max_payload_bytes` | `1048576` (1 MiB) | Maximum transaction-hex length; JSON framing is allowed separately. |
 
 `max_payload_bytes` excludes the largest non-standard transactions: a
 maximal one serializes to roughly 4 MB, about 8 MiB as hex. Raising it to
@@ -137,12 +140,10 @@ nginx value from the live config file:
 2. Edit `MAX_PAYLOAD_BYTES` in `deploy/install.sh` and `deploy/update.sh`
    (both hardcode it, to derive nginx's `client_max_body_size`) so future
    installs and updates render a matching nginx value.
-3. If the site is already certbot-managed (`listen 443 ssl` present in
-   `/etc/nginx/sites-available/outofband.conf`), `update.sh` will not
-   re-template that file: edit its `client_max_body_size` directive by
-   hand and run `sudo nginx -t && sudo systemctl reload nginx`. On a
-   pre-certbot site, the next `update.sh` picks up the new value
-   automatically.
+3. Run `just update`. It rewrites the managed nginx application snippet
+   with the matching `client_max_body_size` and leaves the TLS server block
+   untouched. A legacy TLS site must first include
+   `/etc/nginx/snippets/outofband-app.conf` as described above.
 
 ### Logs
 
@@ -190,9 +191,11 @@ curl -s -X POST https://your-domain.example/broadcast \
 
 Response: `{"txid": "...", "vsize": n, "status":
 "submitted"|"rejected"|"invalid", "error": "..."|null}`. HTTP status is
-`400` for hex that doesn't decode to a consensus-valid transaction, `413`
-over `max_payload_bytes`, `429` with `retry_after_secs` when rate limited,
-`200` whenever Slipstream answered with a plain accept/reject on the
+`400` for hex that is not a well-formed transaction encoding or has no
+inputs or outputs, `413` over `max_payload_bytes`, and `429` when rate
+limited. Application-level `429` responses include `retry_after_secs`;
+nginx may return its own non-JSON `429` first. The status is `200`
+whenever Slipstream answered with a plain accept/reject on the
 submission itself (`status: "submitted"`, or `status: "rejected"` for
 e.g. a fee-too-low bounce, surfaced verbatim in `error`), and `502` both
 when Slipstream is unreachable *and* when Slipstream's response indicates
