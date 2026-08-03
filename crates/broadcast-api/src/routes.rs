@@ -245,11 +245,15 @@ fn broadcast_response(
 }
 
 fn rate_limited_response(retry_after: Duration) -> axum::response::Response {
+    let retry_after_secs = retry_after
+        .as_secs()
+        .saturating_add(u64::from(retry_after.subsec_nanos() > 0))
+        .max(1);
     (
         StatusCode::TOO_MANY_REQUESTS,
         Json(RateLimitedResponse {
             error: "rate limited",
-            retry_after_secs: retry_after.as_secs(),
+            retry_after_secs,
         }),
     )
         .into_response()
@@ -663,7 +667,7 @@ mod tests {
             .unwrap();
         assert_eq!(second.status(), StatusCode::TOO_MANY_REQUESTS);
         let json = body_json(second).await;
-        assert!(json["retry_after_secs"].as_u64().unwrap() <= window.as_secs() + 1);
+        assert_eq!(json["retry_after_secs"], 1);
 
         tokio::time::sleep(window + Duration::from_millis(50)).await;
 
