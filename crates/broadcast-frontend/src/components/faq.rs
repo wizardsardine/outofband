@@ -87,7 +87,7 @@ fn entries(fee: Option<&FeeSnapshot>) -> Vec<(&'static str, String)> {
                 .to_string(),
         ),
         (
-            "Does anything I paste get sent to your server?",
+            "Where does what I paste actually go?",
             "No. Decoding, finalizing and fee maths all run in your browser, and this site has no \
              server in the path. The only thing that ever leaves this page is the finalized \
              transaction hex, sent straight from your browser to MARA Slipstream when you press \
