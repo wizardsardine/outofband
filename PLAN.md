@@ -1093,7 +1093,7 @@ a button this UI does not have (departure 4).
 
 Footer: separated by a `#1a1a1a` top rule, "Built by
 [Wizardsardine](https://wizardsardine.com)" on the left and the
-"Disclosure" and "Slipstream terms" links on the right, 13px, wrapping on
+"Source", "Disclosure" and "Slipstream terms" links on the right, 13px, wrapping on
 narrow screens. Links are `#b0def0`, hovering to `#5fe7e4`, undecorated. Every link leaving the page carries
 `target="_blank"` with `rel="noopener noreferrer"`: the new tab must not
 get a `window.opener` handle back to this one, and the referrer is not

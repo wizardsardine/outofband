@@ -17,7 +17,8 @@ pub fn footer() -> Html {
             <span style={attribution_style}>
                 { rich(t.footer_built_by, &RichStyles::plain()) }
             </span>
-            <div style="display:flex;gap:22px;align-items:center;font-size:13.5px">
+            <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:center;font-size:13.5px">
+                <a href="https://github.com/wizardsardine/outofband" target="_blank" rel="noopener noreferrer">{t.footer_source}</a>
                 <a href="https://wizardsardine.com/blog/coldcard-rng-vulnerability/" target="_blank" rel="noopener noreferrer">{t.footer_disclosure}</a>
                 <a href="https://slipstream.mara.com/" target="_blank" rel="noopener noreferrer">{t.footer_slipstream_terms}</a>
             </div>

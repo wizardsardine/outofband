@@ -333,6 +333,7 @@ pub struct Strings {
 
     // Footer
     pub footer_built_by: &'static str,
+    pub footer_source: &'static str,
     pub footer_disclosure: &'static str,
     pub footer_slipstream_terms: &'static str,
 

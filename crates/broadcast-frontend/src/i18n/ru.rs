@@ -141,6 +141,7 @@ pub static STRINGS: Strings = Strings {
         открытая и всем остальным.",
 
     footer_built_by: "Сделано в [Wizardsardine](https://wizardsardine.com)",
+    footer_source: "Исходный код",
     footer_disclosure: "Уведомление",
     footer_slipstream_terms: "Условия Slipstream",
 
