@@ -1,8 +1,8 @@
 use yew::prelude::*;
 
 use crate::components::{
-    ContextBanner, DisclosureStrip, Faq, FinalizationModal, Footer, Hero, PasteBox, QueueTable,
-    StatStrip,
+    ContextBanner, DisclosureStrip, Faq, FinalizationModal, Footer, Hero, PasteBox, PrepareStep,
+    QueueTable, StatStrip,
 };
 use crate::hooks::{use_fee, use_file_load, use_mobile, use_queue};
 
@@ -44,6 +44,11 @@ pub fn app() -> Html {
                             />
                         </div>
                     }
+                    // Directly above the paste box rather than above the
+                    // queue: it explains how to get a file for the step that
+                    // follows it, and with rows on screen the queue still
+                    // wants the top of the page.
+                    <PrepareStep />
                     <PasteBox
                         raw_text={queue.raw_text.clone()}
                         on_raw_text={queue.on_raw_text.clone()}

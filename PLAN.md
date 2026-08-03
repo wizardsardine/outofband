@@ -136,7 +136,7 @@ seconds before giving up.
   failure, or a 429 that outlasts the retries, marks the row and pauses
   the run.
 - `UI_MOCKUP.html` at the repo root is the authoritative visual
-  reference. Section 4 transcribes it and lists the eleven deliberate
+  reference. Section 4 transcribes it and lists the twelve deliberate
   departures; anything not on that list is a detail to reproduce.
 
 ### Deployment
@@ -599,7 +599,7 @@ calls `tx-core` directly in wasm. This crate is the whole product.
 `UI_MOCKUP.html` at the repository root is the **authoritative visual
 reference**. Where this section and the mockup disagree on layout, color,
 spacing, radius, sizing or copy, the mockup wins and this section is to be
-corrected, with the sole exception of the eleven departures enumerated at
+corrected, with the sole exception of the twelve departures enumerated at
 the end of this section, which exist because the mockup is a static prop:
 it simulates behavior it does not implement, encodes a queue policy
 that has since been reversed, and carries copy that has since been
@@ -755,6 +755,23 @@ top to bottom; in use, a user who has already loaded transactions comes
 back to act on the queue, and a 214px textarea between the hero and the
 rows buries exactly what they returned for. The load section keeps its
 place when the queue is empty.
+
+Prepare your transaction: a step the mockup does not have (departure 12),
+directly above the load section and below the queue when there is one — it
+explains how to get a file for the step that follows it, and rows on screen
+still want the top of the page. A 26px/600 heading over a warn note card
+(`#100d06`, `#3d3520` border, 3px `#e0b341` left edge, `18px 22px`) holding
+a warning triangle and two paragraphs: Liana users prepare and sign
+normally but **DO NOT** press the broadcast button — `DO NOT` in `#e0b341`
+at weight 700 — and click **Export** instead, that file being what the next
+step loads; then, muted, that a transaction signed without saving the PSBT
+can be found again under **Drafts and Approvals**. Liana UI names are
+picked out in `#f4f4f4`/600 so they read as things to look for on screen.
+Below the card, outside it, one muted line for everyone else: this tool
+works with whatever PSBT your wallet exports. The warning palette is not
+decoration — the broadcast button sits one click from Export, and pressing
+it puts the transaction in the public mempool, which is the single outcome
+this page exists to avoid.
 
 Load transactions: heading plus the mockup's sentence, capped at `70ch` —
 "Paste or drop signed PSBTs and raw transactions. Your browser sends each
@@ -999,11 +1016,12 @@ from the live API (section 2).
 
 ### Deliberate departures from the mockup
 
-The mockup wins on everything except the following eleven points, places
+The mockup wins on everything except the following twelve points, places
 where it simulates behavior it does not implement, encodes a queue
-policy that has since been reversed, or states something the copy has since
-been corrected on. Anything not on this list is a mockup detail to be
-reproduced, not a decision to be revisited.
+policy that has since been reversed, states something the copy has since
+been corrected on, or stops short of a step real users need. Anything not
+on this list is a mockup detail to be reproduced, not a decision to be
+revisited.
 
 1. **Unfinalizable PSBTs are refused at load**, via the modal in
    section 1, rather than queued as a warn-note row. The mockup queues
@@ -1077,6 +1095,13 @@ reproduced, not a decision to be revisited.
     CPFP one is the only place the page states that limitation to a user
     rather than to a reader of the README, and the last is the one that
     decides whether they trust the page enough to paste into it.
+12. **A "Prepare your transaction" step precedes the load section.** The
+    mockup starts at the textarea, which assumes the user already has a
+    PSBT in hand. Liana users do not: they have a signed transaction in
+    the wallet, and the button that gets it out of there (Export) sits
+    beside the one that ruins the attempt (broadcast). A page whose whole
+    purpose is avoiding the public mempool cannot leave that choice
+    unlabelled, so the step names both buttons and says which one to press.
 
 Beyond these, the mockup's logic is prop scaffolding wherever it stands in
 for work `tx-core` and `unpack.rs` do for real: its hand-rolled JS
