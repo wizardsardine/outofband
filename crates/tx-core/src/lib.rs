@@ -266,24 +266,35 @@ pub fn vsize(tx: &Transaction) -> u64 {
     tx.vsize() as u64
 }
 
-/// Sums a saturating `u64` total from an iterator of satoshi amounts:
-/// adversarial input (values summing past `u64::MAX`) reports the
-/// maximum rather than wrapping or panicking.
-fn sum_sats<I: IntoIterator<Item = bitcoin::Amount>>(amounts: I) -> u64 {
-    amounts
-        .into_iter()
-        .fold(0u64, |acc, amount| acc.saturating_add(amount.to_sat()))
+/// An exact amount sum exceeded the supported satoshi range.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AmountOverflowError;
+
+impl fmt::Display for AmountOverflowError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "amount sum exceeds u64 satoshi range")
+    }
+}
+
+impl std::error::Error for AmountOverflowError {}
+
+fn sum_sats<I: IntoIterator<Item = bitcoin::Amount>>(
+    amounts: I,
+) -> Result<u64, AmountOverflowError> {
+    amounts.into_iter().try_fold(0u64, |sum, amount| {
+        sum.checked_add(amount.to_sat()).ok_or(AmountOverflowError)
+    })
 }
 
 /// Sum of `tx`'s output values, in satoshis.
-pub fn output_sum(tx: &Transaction) -> u64 {
+pub fn output_sum(tx: &Transaction) -> Result<u64, AmountOverflowError> {
     sum_sats(tx.output.iter().map(|out| out.value))
 }
 
 /// Sum of a PSBT's unsigned-transaction output values, in satoshis:
 /// available whether or not the PSBT's inputs carry UTXO data, so a
 /// partial-UTXO PSBT is never stranded without a known output sum.
-pub fn psbt_output_sum(psbt: &Psbt) -> u64 {
+pub fn psbt_output_sum(psbt: &Psbt) -> Result<u64, AmountOverflowError> {
     output_sum(&psbt.unsigned_tx)
 }
 
@@ -301,7 +312,7 @@ pub enum InputSum {
 /// returns [`InputSum::Unknown`] with the count missing rather than an
 /// exact sum over a subset — a partial sum would silently understate the
 /// fee.
-pub fn psbt_input_sum(psbt: &Psbt) -> InputSum {
+pub fn psbt_input_sum(psbt: &Psbt) -> Result<InputSum, AmountOverflowError> {
     let mut sum = 0u64;
     let mut missing = 0usize;
 
@@ -318,17 +329,21 @@ pub fn psbt_input_sum(psbt: &Psbt) -> InputSum {
                     .map(|out| out.value)
             });
         match value {
-            Some(value) => sum = sum.saturating_add(value.to_sat()),
+            Some(value) => {
+                sum = sum
+                    .checked_add(value.to_sat())
+                    .ok_or(AmountOverflowError)?;
+            }
             None => missing += 1,
         }
     }
 
     if missing > 0 {
-        InputSum::Unknown {
+        Ok(InputSum::Unknown {
             missing_utxo_inputs: missing,
-        }
+        })
     } else {
-        InputSum::Known(sum)
+        Ok(InputSum::Known(sum))
     }
 }
 
@@ -344,19 +359,19 @@ pub enum PsbtFee {
 }
 
 /// Derives a PSBT's fee from its inputs' UTXO data and its outputs.
-pub fn psbt_fee(psbt: &Psbt) -> PsbtFee {
-    match psbt_input_sum(psbt) {
+pub fn psbt_fee(psbt: &Psbt) -> Result<PsbtFee, AmountOverflowError> {
+    match psbt_input_sum(psbt)? {
         InputSum::Known(input_sum) => {
-            let output_sum = psbt_output_sum(psbt);
-            PsbtFee::Known {
+            let output_sum = output_sum(&psbt.unsigned_tx)?;
+            Ok(PsbtFee::Known {
                 fee_sats: input_sum as i128 - output_sum as i128,
-            }
+            })
         }
         InputSum::Unknown {
             missing_utxo_inputs,
-        } => PsbtFee::Unknown {
+        } => Ok(PsbtFee::Unknown {
             missing_utxo_inputs,
-        },
+        }),
     }
 }
 

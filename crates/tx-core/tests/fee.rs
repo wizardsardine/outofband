@@ -4,8 +4,8 @@ use bitcoin::psbt::Input;
 use bitcoin::transaction::Version;
 use bitcoin::{Amount, OutPoint, Psbt, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid};
 use tx_core::{
-    FloorComparison, InputSum, PsbtFee, compare_to_floor, fee_from_user_total, fee_rate, finalize,
-    output_sum, psbt_fee, psbt_input_sum, psbt_output_sum, vsize,
+    AmountOverflowError, FloorComparison, InputSum, PsbtFee, compare_to_floor, fee_from_user_total,
+    fee_rate, finalize, output_sum, psbt_fee, psbt_input_sum, psbt_output_sum, vsize,
 };
 
 /// A previous output an input can spend: either UTXO data or none at all.
@@ -84,18 +84,18 @@ fn psbt(inputs: &[Utxo], outputs: &[u64]) -> Psbt {
 fn psbt_with_witness_utxo_data_yields_exact_fee_and_output_sum() {
     let psbt = psbt(&[Utxo::Witness(100_000), Utxo::Witness(50_000)], &[120_000]);
 
-    assert_eq!(psbt_input_sum(&psbt), InputSum::Known(150_000));
-    assert_eq!(psbt_output_sum(&psbt), 120_000);
-    assert_eq!(psbt_fee(&psbt), PsbtFee::Known { fee_sats: 30_000 });
+    assert_eq!(psbt_input_sum(&psbt), Ok(InputSum::Known(150_000)));
+    assert_eq!(psbt_output_sum(&psbt), Ok(120_000));
+    assert_eq!(psbt_fee(&psbt), Ok(PsbtFee::Known { fee_sats: 30_000 }));
 }
 
 #[test]
 fn psbt_with_non_witness_utxo_data_yields_exact_fee_and_output_sum() {
     let psbt = psbt(&[Utxo::NonWitness(200_000)], &[150_000]);
 
-    assert_eq!(psbt_input_sum(&psbt), InputSum::Known(200_000));
-    assert_eq!(psbt_output_sum(&psbt), 150_000);
-    assert_eq!(psbt_fee(&psbt), PsbtFee::Known { fee_sats: 50_000 });
+    assert_eq!(psbt_input_sum(&psbt), Ok(InputSum::Known(200_000)));
+    assert_eq!(psbt_output_sum(&psbt), Ok(150_000));
+    assert_eq!(psbt_fee(&psbt), Ok(PsbtFee::Known { fee_sats: 50_000 }));
 }
 
 #[test]
@@ -111,19 +111,19 @@ fn psbt_missing_utxo_data_on_one_of_three_inputs_reports_unknown_with_count() {
 
     assert_eq!(
         psbt_input_sum(&psbt),
-        InputSum::Unknown {
+        Ok(InputSum::Unknown {
             missing_utxo_inputs: 1
-        }
+        })
     );
     assert_eq!(
         psbt_fee(&psbt),
-        PsbtFee::Unknown {
+        Ok(PsbtFee::Unknown {
             missing_utxo_inputs: 1
-        }
+        })
     );
     // Output sum is derivable from the unsigned tx regardless of the
     // inputs' UTXO state: a partial-UTXO PSBT is never stranded without it.
-    assert_eq!(psbt_output_sum(&psbt), 80_000);
+    assert_eq!(psbt_output_sum(&psbt), Ok(80_000));
 }
 
 #[test]
@@ -144,7 +144,7 @@ fn raw_transaction_has_known_output_sum_but_no_automatic_fee() {
         ],
     };
 
-    assert_eq!(output_sum(&tx), 19_134);
+    assert_eq!(output_sum(&tx), Ok(19_134));
     // Previous outputs are never known for a raw transaction, so there is
     // no automatic fee — only fee_from_user_total (the inline "total input
     // value" path) can produce one.
@@ -203,17 +203,20 @@ fn fee_rate_is_unknown_for_zero_vsize() {
 #[test]
 fn psbt_fee_reports_negative_fee_when_outputs_exceed_inputs_without_panicking() {
     let psbt = psbt(&[Utxo::Witness(1_000)], &[5_000]);
-    assert_eq!(psbt_fee(&psbt), PsbtFee::Known { fee_sats: -4_000 });
+    assert_eq!(psbt_fee(&psbt), Ok(PsbtFee::Known { fee_sats: -4_000 }));
 }
 
 #[test]
-fn input_sum_saturates_instead_of_overflowing_on_u64_edge_values() {
+fn input_sum_reports_overflow_instead_of_an_exact_value() {
     let psbt = psbt(&[Utxo::Witness(u64::MAX), Utxo::Witness(u64::MAX)], &[1]);
-    assert_eq!(psbt_input_sum(&psbt), InputSum::Known(u64::MAX));
+    assert_eq!(
+        psbt_input_sum(&psbt),
+        Err(PsbtAnalysisError::AmountOverflow)
+    );
 }
 
 #[test]
-fn output_sum_saturates_instead_of_overflowing_on_u64_edge_values() {
+fn output_sum_reports_overflow_instead_of_an_exact_value() {
     let tx = Transaction {
         version: Version::TWO,
         lock_time: LockTime::ZERO,
