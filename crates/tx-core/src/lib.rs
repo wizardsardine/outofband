@@ -8,6 +8,7 @@
 use core::fmt;
 use core::str::{self, FromStr};
 
+use bitcoin::base64::Engine as _;
 use bitcoin::hex::FromHex;
 use bitcoin::psbt::PsbtParseError;
 use bitcoin::secp256k1::Secp256k1;
@@ -82,35 +83,32 @@ impl std::error::Error for TxCoreError {
 }
 
 /// Detects the format of `input` by content only: never by filename or
-/// extension. Checks, in order, the binary PSBT magic, a hex-decoded PSBT
-/// magic (ruled out rather than misread as a transaction), a base64 PSBT,
-/// then consensus deserialization for the hex and binary transaction cases.
+/// extension. Checks, in order, the binary PSBT magic, base64 PSBT text,
+/// hex text, then consensus deserialization for binary transactions.
 pub fn detect(input: &[u8]) -> Option<Format> {
-    let trimmed = input.trim_ascii();
-
-    if trimmed.starts_with(PSBT_MAGIC) {
+    if input.starts_with(PSBT_MAGIC) {
         return Some(Format::PsbtBinary);
     }
 
-    if let Ok(text) = str::from_utf8(trimmed) {
+    if let Ok(text) = str::from_utf8(input) {
         let text = text.trim();
-        let hex_bytes = Vec::<u8>::from_hex(text).ok();
-
-        if hex_bytes
-            .as_deref()
-            .is_some_and(|bytes| bytes.starts_with(PSBT_MAGIC))
+        if bitcoin::base64::engine::general_purpose::STANDARD
+            .decode(text)
+            .is_ok_and(|bytes| bytes.starts_with(PSBT_MAGIC))
+            || text.starts_with("cHNidP")
         {
-            return None;
-        }
-        if Psbt::from_str(text).is_ok() {
             return Some(Format::PsbtBase64);
         }
-        if hex_bytes.is_some_and(|bytes| consensus::deserialize::<Transaction>(&bytes).is_ok()) {
+
+        if !text.is_empty() && text.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+            if Vec::<u8>::from_hex(text).is_ok_and(|bytes| bytes.starts_with(PSBT_MAGIC)) {
+                return None;
+            }
             return Some(Format::TxHex);
         }
     }
 
-    consensus::deserialize::<Transaction>(trimmed)
+    consensus::deserialize::<Transaction>(input)
         .ok()
         .map(|_| Format::TxBinary)
 }
@@ -123,12 +121,11 @@ pub fn decode(input: &[u8]) -> Result<Decoded, TxCoreError> {
 
 /// Decodes `input` as the given `format`, without re-detecting it.
 pub fn decode_as(format: Format, input: &[u8]) -> Result<Decoded, TxCoreError> {
-    let trimmed = input.trim_ascii();
     match format {
-        Format::PsbtBinary => decode_psbt_binary(trimmed),
-        Format::PsbtBase64 => decode_psbt_base64(trimmed),
-        Format::TxHex => decode_tx_hex(trimmed),
-        Format::TxBinary => decode_tx_binary(trimmed),
+        Format::PsbtBinary => decode_psbt_binary(input),
+        Format::PsbtBase64 => decode_psbt_base64(input),
+        Format::TxHex => decode_tx_hex(input),
+        Format::TxBinary => decode_tx_binary(input),
     }
 }
 

@@ -50,7 +50,7 @@ fn detects_each_accepted_format() {
         Case {
             name: "odd length hex",
             input: b"abc",
-            expected_format: None,
+            expected_format: Some(Format::TxHex),
         },
     ];
 
@@ -114,9 +114,30 @@ fn odd_length_hex_forced_as_tx_hex_is_malformed_hex() {
 }
 
 #[test]
+fn malformed_hex_text_is_classified_before_decode() {
+    assert_eq!(detect(b"abc"), Some(Format::TxHex));
+    assert!(matches!(decode(b"abc"), Err(TxCoreError::MalformedHex(_))));
+    assert_eq!(detect(b"deadbeef"), Some(Format::TxHex));
+    assert!(matches!(
+        decode(b"deadbeef"),
+        Err(TxCoreError::TransactionDeserialize(_))
+    ));
+}
+
+#[test]
 fn invalid_base64_forced_as_psbt_base64_is_malformed_base64() {
     let err = decode_as(Format::PsbtBase64, b"not!valid@base64").unwrap_err();
     assert!(matches!(err, TxCoreError::MalformedBase64(_)), "got: {err}");
+}
+
+#[test]
+fn malformed_psbt_base64_prefix_is_classified_before_decode() {
+    let input = b"cHNidP8!";
+    assert_eq!(detect(input), Some(Format::PsbtBase64));
+    assert!(matches!(
+        decode(input),
+        Err(TxCoreError::MalformedBase64(_))
+    ));
 }
 
 #[test]
@@ -144,6 +165,23 @@ fn malformed_tx_binary_is_a_transaction_deserialize_error() {
         matches!(err, TxCoreError::TransactionDeserialize(_)),
         "got: {err}"
     );
+}
+
+#[test]
+fn binary_inputs_are_not_trimmed() {
+    let mut psbt = PSBT_BINARY.to_vec();
+    psbt.insert(0, b'\n');
+    assert!(matches!(
+        decode_as(Format::PsbtBinary, &psbt),
+        Err(TxCoreError::PsbtDeserialize(_))
+    ));
+
+    let mut tx = TX_BINARY.to_vec();
+    tx.push(b' ');
+    assert!(matches!(
+        decode_as(Format::TxBinary, &tx),
+        Err(TxCoreError::TransactionDeserialize(_))
+    ));
 }
 
 #[test]
