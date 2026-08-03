@@ -42,10 +42,15 @@ fi
 sudo rm -f /etc/systemd/system/broadcast-api.service
 sudo systemctl daemon-reload
 
-sudo rm -f /etc/nginx/sites-enabled/outofband.conf /etc/nginx/sites-available/outofband.conf /etc/nginx/conf.d/outofband-zone.conf
+sudo rm -f /etc/nginx/sites-enabled/outofband.conf /etc/nginx/sites-available/outofband.conf \
+  /etc/nginx/conf.d/outofband-zone.conf /etc/nginx/snippets/outofband-app.conf \
+  /etc/nginx/snippets/outofband-security-headers.conf
 if command -v nginx >/dev/null 2>&1; then
-  sudo nginx -t
-  sudo systemctl reload nginx
+  if sudo nginx -t; then
+    sudo systemctl reload nginx
+  else
+    log_warn "nginx configuration is invalid after removing outofband files; skipping reload and continuing cleanup"
+  fi
 fi
 
 sudo rm -f /usr/local/bin/broadcast-api

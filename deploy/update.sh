@@ -56,12 +56,18 @@ log_info "installing systemd unit"
 sudo cp "$PROJECT_ROOT/deploy/systemd/broadcast-api.service" /etc/systemd/system/broadcast-api.service
 sudo systemctl daemon-reload
 
-log_info "installing nginx zone snippet"
+log_info "installing nginx snippets"
 sudo cp "$PROJECT_ROOT/deploy/nginx/outofband-zone.conf" /etc/nginx/conf.d/outofband-zone.conf
+sudo mkdir -p /etc/nginx/snippets
+sudo cp "$PROJECT_ROOT/deploy/nginx/outofband-security-headers.conf" /etc/nginx/snippets/outofband-security-headers.conf
+sed "s/client_max_body_size 2m;/client_max_body_size ${NGINX_CLIENT_MAX_BODY};/" \
+  "$PROJECT_ROOT/deploy/nginx/outofband-app.conf" | sudo tee /etc/nginx/snippets/outofband-app.conf >/dev/null
 
 NGINX_SITE=/etc/nginx/sites-available/outofband.conf
-if [ -f "$NGINX_SITE" ] && sudo grep -q "listen 443 ssl" "$NGINX_SITE"; then
-  log_warn "$NGINX_SITE looks certbot-managed (listen 443 ssl found); leaving it untouched so update.sh does not revert TLS. Diff deploy/nginx/outofband.conf against it manually if routes/headers changed."
+if [ -f "$NGINX_SITE" ] && sudo grep -qF 'include /etc/nginx/snippets/outofband-app.conf;' "$NGINX_SITE"; then
+  log_info "managed nginx application snippet is active"
+elif [ -f "$NGINX_SITE" ] && sudo grep -q "listen 443 ssl" "$NGINX_SITE"; then
+  log_warn "legacy TLS site does not include /etc/nginx/snippets/outofband-app.conf; managed application updates are not active until the site is migrated"
 else
   SERVER_NAME="outofband.example.com"
   if [ -f "$NGINX_SITE" ]; then

@@ -122,17 +122,29 @@ fi
 log_info "installing systemd unit"
 sudo cp "$PROJECT_ROOT/deploy/systemd/broadcast-api.service" /etc/systemd/system/broadcast-api.service
 sudo systemctl daemon-reload
-sudo systemctl enable --now broadcast-api
+sudo systemctl enable broadcast-api
+sudo systemctl restart broadcast-api
 
-log_info "installing nginx zone snippet"
+log_info "installing nginx snippets"
 sudo cp "$PROJECT_ROOT/deploy/nginx/outofband-zone.conf" /etc/nginx/conf.d/outofband-zone.conf
+sudo mkdir -p /etc/nginx/snippets
+sudo cp "$PROJECT_ROOT/deploy/nginx/outofband-security-headers.conf" /etc/nginx/snippets/outofband-security-headers.conf
+sed "s/client_max_body_size 2m;/client_max_body_size ${NGINX_CLIENT_MAX_BODY};/" \
+  "$PROJECT_ROOT/deploy/nginx/outofband-app.conf" | sudo tee /etc/nginx/snippets/outofband-app.conf >/dev/null
 
 if [ ! -f /etc/nginx/sites-available/outofband.conf ]; then
   log_info "installing nginx site to /etc/nginx/sites-available/outofband.conf"
-  sed "s/client_max_body_size 2m;/client_max_body_size ${NGINX_CLIENT_MAX_BODY};/" \
-    "$PROJECT_ROOT/deploy/nginx/outofband.conf" | sudo tee /etc/nginx/sites-available/outofband.conf >/dev/null
+  sudo cp "$PROJECT_ROOT/deploy/nginx/outofband.conf" /etc/nginx/sites-available/outofband.conf
+elif sudo grep -qF 'include /etc/nginx/snippets/outofband-app.conf;' /etc/nginx/sites-available/outofband.conf; then
+  log_info "managed nginx application snippet is active"
+elif sudo grep -q "listen 443 ssl" /etc/nginx/sites-available/outofband.conf; then
+  log_warn "legacy TLS site does not include /etc/nginx/snippets/outofband-app.conf; managed application updates are not active until the site is migrated"
 else
-  log_info "nginx site already exists at /etc/nginx/sites-available/outofband.conf, leaving it untouched"
+  SERVER_NAME="$(sudo awk '$1 == "server_name" { print $2 }' /etc/nginx/sites-available/outofband.conf | tr -d ';' | head -n1)"
+  [ -n "$SERVER_NAME" ] || SERVER_NAME="outofband.example.com"
+  log_info "migrating nginx site to the managed application snippet"
+  sed "s/server_name outofband.example.com;/server_name ${SERVER_NAME};/" \
+    "$PROJECT_ROOT/deploy/nginx/outofband.conf" | sudo tee /etc/nginx/sites-available/outofband.conf >/dev/null
 fi
 sudo ln -sf /etc/nginx/sites-available/outofband.conf /etc/nginx/sites-enabled/outofband.conf
 sudo rm -f /etc/nginx/sites-enabled/default
