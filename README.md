@@ -157,3 +157,8 @@ sudo ufw allow 443
 - [Coldcard RNG vulnerability, and why you might need this tool](https://wizardsardine.com/blog/coldcard-rng-vulnerability/)
 - [MARA Slipstream](https://slipstream.mara.com): the service this page
   submits to; its terms and no-support policy are stated on that site.
+
+## Licence
+
+BSD 3-Clause, the same terms as [Liana](https://github.com/wizardsardine/liana).
+See [LICENCE](LICENCE).
