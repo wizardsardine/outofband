@@ -10,8 +10,10 @@ use core::fmt;
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
-use reqwest::Client;
+use reqwest::{Client, Response, StatusCode};
 use serde::{Deserialize, Serialize};
+
+const MAX_RESPONSE_BODY_BYTES: usize = 64 * 1024;
 
 /// Configuration needed to construct a [`SlipstreamClient`], taken verbatim
 /// from `/etc/outofband/config.toml`'s `[slipstream]` table. Endpoint paths
@@ -107,15 +109,17 @@ impl SlipstreamClient {
             request = request.query(&[("client_code", code)]);
         }
 
-        let response = request.send().await.map_err(transport_error)?;
-        let status = response.status();
-        let body = response.text().await.map_err(transport_error)?;
+        let response = request
+            .send()
+            .await
+            .map_err(transport_error)?;
+        let (status, body) = self.read_response(response).await?;
 
         if status.is_success() {
             let parsed: RatesResponse =
-                serde_json::from_str(&body).map_err(|e| SlipstreamError::Http {
+                serde_json::from_str(&body).map_err(|_| SlipstreamError::Http {
                     status: status.as_u16(),
-                    body: format!("could not parse rates response ({e}): {body}"),
+                    body: "could not parse rates response".to_string(),
                 })?;
             return Ok(FeeInfo {
                 effective_rate_sat_vb: parsed.effective_rate,
@@ -124,10 +128,10 @@ impl SlipstreamClient {
         }
 
         match serde_json::from_str::<RatesErrorBody>(&body) {
-            Ok(err) => Err(SlipstreamError::Rejected(err.message)),
+            Ok(err) => Err(SlipstreamError::Rejected(err.message.clone())),
             Err(_) => Err(SlipstreamError::Http {
                 status: status.as_u16(),
-                body,
+                body: "could not parse rates error response".to_string(),
             }),
         }
     }
@@ -155,28 +159,63 @@ impl SlipstreamClient {
             .send()
             .await
             .map_err(transport_error)?;
-        let status = response.status();
-        let text = response.text().await.map_err(transport_error)?;
+        let (status, text) = self.read_response(response).await?;
 
         let parsed: SubmitResponseBody =
             serde_json::from_str(&text).map_err(|_| SlipstreamError::Http {
                 status: status.as_u16(),
-                body: text.clone(),
+                body: "could not parse submission response".to_string(),
             })?;
 
         if parsed.status == "success" {
             return Ok(SubmitResult {
                 status: parsed.status,
-                message: parsed.message,
+                message: parsed.message.clone(),
             });
         }
 
-        if is_client_code_issue(&parsed.message) {
-            return Err(SlipstreamError::ClientCode(parsed.message));
+        let client_code_issue = is_client_code_issue(&parsed.message);
+        let message = parsed.message.clone();
+        if client_code_issue {
+            return Err(SlipstreamError::ClientCode(message));
+        }
+        if parsed.status == "error" {
+            return Err(SlipstreamError::Rejected(message));
         }
 
-        Err(SlipstreamError::Rejected(parsed.message))
+        Err(SlipstreamError::Http {
+            status: status.as_u16(),
+            body: message,
+        })
     }
+
+    async fn read_response(
+        &self,
+        mut response: Response,
+    ) -> Result<(StatusCode, String), SlipstreamError> {
+        let status = response.status();
+        let mut body = Vec::new();
+        while let Some(chunk) = response
+            .chunk()
+            .await
+            .map_err(transport_error)?
+        {
+            if body.len().saturating_add(chunk.len()) > MAX_RESPONSE_BODY_BYTES {
+                return Err(SlipstreamError::Http {
+                    status: status.as_u16(),
+                    body: format!("response body exceeds {MAX_RESPONSE_BODY_BYTES} bytes"),
+                });
+            }
+            body.extend_from_slice(&chunk);
+        }
+
+        Ok((status, String::from_utf8_lossy(&body).into_owned()))
+    }
+
+}
+
+fn transport_error(err: reqwest::Error) -> SlipstreamError {
+    SlipstreamError::Transport(err.without_url().to_string())
 }
 
 /// The only substring MARA's documented "client codes are currently
@@ -186,15 +225,6 @@ impl SlipstreamClient {
 /// falls through to [`SlipstreamError::Rejected`].
 fn is_client_code_issue(message: &str) -> bool {
     message.to_ascii_lowercase().contains("client code")
-}
-
-/// Strips the request URL from a [`reqwest::Error`] before it becomes a
-/// [`SlipstreamError`]. `rates()` embeds the client code as a query
-/// parameter, and `reqwest::Error`'s `Display`/`Debug` include the URL that
-/// produced it — without this, a transport failure on that call would leak
-/// the code through the very error meant to report it.
-fn transport_error(err: reqwest::Error) -> SlipstreamError {
-    SlipstreamError::Transport(err.without_url().to_string())
 }
 
 /// The fee numbers from `GET /api/rates`.

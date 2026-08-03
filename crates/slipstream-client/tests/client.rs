@@ -175,3 +175,27 @@ async fn client_code_never_appears_in_error_output() {
         "Debug leaked the client code: {debug}"
     );
 }
+
+#[tokio::test]
+async fn oversized_response_body_is_rejected() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/rates"))
+        .respond_with(ResponseTemplate::new(200).set_body_bytes(vec![b'a'; 65_537]))
+        .mount(&server)
+        .await;
+
+    let client = SlipstreamClient::new(&config(server.uri(), "MYCODE123"));
+    let err = client
+        .rates()
+        .await
+        .expect_err("an oversized response must fail");
+
+    match err {
+        SlipstreamError::Http { status, body } => {
+            assert_eq!(status, 200);
+            assert_eq!(body, "response body exceeds 65536 bytes");
+        }
+        other => panic!("expected Http error, got {other:?}"),
+    }
+}
