@@ -49,7 +49,15 @@ pub fn fee_card(props: &FeeCardProps) -> Html {
                 <span style={unit_style}>{"sat/vB"}</span>
             </div>
             <div style={rule_style}></div>
-            <p style={sentence_style}>{"Anything below this rate will not be mined."}</p>
+            // "Not expected to be mined", not "not accepted": this number is
+            // `effective_rate`, and admission is governed by the lower
+            // `submit_fee_rate` the card never shows (section 2 of PLAN.md).
+            // Below this rate a transaction can still be accepted, and then
+            // never mined — which is the whole reason to say so here.
+            <p style={sentence_style}>
+                {"Anything below this rate is not expected to be mined. Clearing it is not a \
+                  guarantee either."}
+            </p>
             // Attached to the number, not to the advice below it: what may
             // be out of date is the figure on this card.
             if stale {

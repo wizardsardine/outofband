@@ -190,7 +190,9 @@ queued transaction hex excludes the largest non-standard transactions
 The user opens a single dark-themed page (full UI specification in
 section 4, matching the approved mockup). A hero shows Slipstream's live
 `effective_rate` — "the floor" — refreshed periodically, with the rule
-stated plainly: anything below it will not be mined.
+stated plainly: anything below it is not expected to be mined, clearing it
+is not a guarantee either, and since the floor moves the rate to build at
+is one comfortably above it.
 Below, the user loads transactions two ways: pasting into a text area
 (a single PSBT in base64 or raw transaction in hex — or several, one per
 line) and dropping/choosing files — single files, several at once, or
@@ -730,7 +732,8 @@ the fee card: eyebrow "Minimum accepted fee rate", Slipstream's
 gradient mono number with `sat/vB` beside it in 22px `#a1a1a1` mono
 (baseline-aligned, 14px gap), a `#1f1f1f` hairline rule
 (`margin:26px 0 20px`), and, corrected from the mockup (departure 8), the
-sentence "Anything below this rate will not be mined." Below that a warn
+sentence "Anything below this rate is not expected to be mined. Clearing
+it is not a guarantee either." Below that a warn
 note card (`#100d06`, `#3d3520` border, 3px `#e0b341` left edge) carries
 the guidance the number alone cannot (departure 10): the floor is
 **dynamic** — it moves with demand and is re-read every 30 s — so build at
@@ -1026,13 +1029,17 @@ reproduced, not a decision to be revisited.
    value".** With gating removed, nothing *needs* an input value; the
    field is there to inform. The mockup's label would now describe a
    requirement that does not exist.
-8. **The fee card reads "Anything below this rate will not be mined",**
-   not the mockup's "rejected, not queued". The hero number is
-   `effective_rate` (4.0), but the true rejection line is
-   `submit_fee_rate` (2.0) — between them a transaction is accepted and
-   then quietly never mined (section 2). "Rejected, not queued" would be
-   false for exactly the band where a user is most likely to lose coins
-   while believing they succeeded.
+8. **The fee card reads "Anything below this rate is not expected to be
+   mined. Clearing it is not a guarantee either",** not the mockup's
+   "rejected, not queued". The hero number is `effective_rate` (4.0), but
+   the true rejection line is `submit_fee_rate` (2.0) — between them a
+   transaction is accepted and then quietly never mined (section 2). Any
+   wording built on *acceptance* is false for exactly the band where a
+   user is most likely to lose coins while believing they succeeded, so
+   the sentence speaks only about being mined, and the second half says
+   that clearing the floor is not a promise either — the same point the
+   "Am I guaranteed to get my transaction mined?" FAQ answer makes at
+   length.
 9. **The disclosure carries the warning palette, and the context banner
    scopes the audience rather than arguing the tool's existence.** The
    mockup dresses the strip as muted chrome and has the banner narrate the
