@@ -1,6 +1,6 @@
 use yew::prelude::*;
 
-use crate::tokens::{NOTE_CARD_WARN, TEXT_MUTED_7B, TEXT_PRIMARY, WARNING};
+use crate::tokens::{NOTE_CARD_WARN, TEXT_MUTED_7B, TEXT_PRIMARY, TEXT_SECONDARY, WARNING};
 
 /// Sits directly above the paste box: the step before loading anything is
 /// getting a PSBT out of the wallet without broadcasting it, and in Liana
@@ -20,10 +20,14 @@ pub fn prepare_step() -> Html {
     let secondary_style = format!(
         "margin:12px 0 0;font-size:13.5px;line-height:1.6;color:{TEXT_MUTED_7B};max-width:88ch;text-wrap:pretty"
     );
+    // Body copy, not the muted grey an aside would get: this paragraph is
+    // the instruction for every wallet that is not Liana, so it carries the
+    // same weight as the card beside it.
     let aside_style = format!(
-        "margin:16px 0 0;font-size:13.5px;line-height:1.6;color:{TEXT_MUTED_7B};max-width:88ch;text-wrap:pretty"
+        "margin:18px 0 0;font-size:14px;line-height:1.6;color:{TEXT_SECONDARY};max-width:88ch;text-wrap:pretty"
     );
     let ui_name_style = format!("color:{TEXT_PRIMARY};font-weight:600");
+    let emphasis_style = format!("color:{TEXT_PRIMARY};font-weight:600");
     let shout_style = format!("color:{WARNING};font-weight:700");
 
     html! {
@@ -51,9 +55,16 @@ pub fn prepare_step() -> Html {
                     {"."}
                 </p>
             </div>
+            // Outside the card and in body copy rather than the warning
+            // palette: this is the instruction for everyone, and a second
+            // amber block beside the first would flatten both. The one
+            // sentence that must not be skimmed is picked out instead.
             <p style={aside_style}>
-                {"If you are not a Liana user, this tool works with whatever PSBT your wallet \
-                  exports."}
+                {"Build and sign your transaction normally, but "}
+                <strong style={emphasis_style}>{"do not broadcast it to the Bitcoin network"}</strong>
+                {". Not all software lets you sign without broadcasting, so check its \
+                  documentation before you sign if you are unsure. Liana users, just read the card \
+                  above."}
             </p>
         </div>
     }
