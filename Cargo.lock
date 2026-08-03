@@ -282,6 +282,7 @@ dependencies = [
  "gloo-net 0.6.0",
  "gloo-timers 0.3.0",
  "serde",
+ "serde_json",
  "tar",
  "tx-core",
  "wasm-bindgen",

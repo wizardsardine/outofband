@@ -29,6 +29,7 @@ web-sys = { workspace = true, features = [
     "File",
 ] }
 serde = { workspace = true }
+serde_json = { workspace = true }
 bitcoin = { workspace = true }
 base64 = { workspace = true }
 tar = { workspace = true }
