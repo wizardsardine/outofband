@@ -71,7 +71,7 @@ fn fee_num_style(mobile: bool, stale: bool) -> String {
     )
 }
 
-fn format_rate(rate: f64) -> String {
+pub(crate) fn format_rate(rate: f64) -> String {
     if rate.fract() == 0.0 {
         format!("{rate:.0}")
     } else {

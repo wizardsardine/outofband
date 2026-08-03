@@ -1,6 +1,6 @@
 use yew::prelude::*;
 
-use crate::components::{ContextBanner, DisclosureStrip, Hero};
+use crate::components::{ContextBanner, DisclosureStrip, Faq, Footer, Hero};
 use crate::hooks::{use_fee, use_mobile};
 
 #[function_component(App)]
@@ -14,7 +14,9 @@ pub fn app() -> Html {
             <div style="padding:0 6%">
                 <div style="max-width:1280px;margin:0 auto">
                     <ContextBanner />
-                    <Hero mobile={mobile} fee={fee} />
+                    <Hero mobile={mobile} fee={fee.clone()} />
+                    <Faq fee={fee} />
+                    <Footer />
                 </div>
             </div>
         </div>
