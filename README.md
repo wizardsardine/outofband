@@ -66,19 +66,21 @@ against a remote host with `user@host` (rsyncs the project to
   system user. Leaves apt packages, the Rust toolchain, TLS certificates
   and the renewal timer in place.
 
-The site ships with `server_name outofband.wizardsardine.com`, so a plain
-install needs no domain flag. The TLS flags are forwarded through the
-remote re-exec, so a one-line remote deploy issues the certificate too:
+Both the domain and the certbot contact default to
+`outofband.wizardsardine.com` and `contact@wizardsardine.com`, and the TLS
+flags are forwarded through the remote re-exec, so a bare deploy issues the
+certificate:
 
 ```
-./deploy/install.sh user@host --domain outofband.wizardsardine.com --email <address>
+./deploy/install.sh user@host
 ```
 
-`--domain` and `--email` are valid only together, and deploy under a
-different name if you pass one. Certbot runs only when the domain already
-resolves to the host, so a certificate is never requested for a name that
-cannot answer the challenge. Otherwise do it by hand once DNS points at
-the host, then reload nginx and run certbot:
+Pass `--domain <host>` to deploy under a different name, `--email
+<address>` to register the account elsewhere. Certbot runs only when the
+domain already resolves to an address on the host, in either family, so a
+certificate is never requested for a name that cannot answer the
+challenge. Otherwise do it by hand once DNS points at the host, then
+reload nginx and run certbot:
 
 ```
 sudo systemctl reload nginx

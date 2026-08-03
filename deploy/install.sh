@@ -40,12 +40,12 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-if [ -n "$DOMAIN" ] && [ -z "$EMAIL" ]; then
-  die "--domain requires --email"
-fi
-if [ -z "$DOMAIN" ] && [ -n "$EMAIL" ]; then
-  die "--email requires --domain"
-fi
+# Both default, so a bare install issues a certificate. The flags exist to
+# deploy under a different name or register the account elsewhere.
+DEFAULT_DOMAIN="outofband.wizardsardine.com"
+DEFAULT_EMAIL="contact@wizardsardine.com"
+[ -n "$DOMAIN" ] || DOMAIN="$DEFAULT_DOMAIN"
+[ -n "$EMAIL" ] || EMAIL="$DEFAULT_EMAIL"
 
 if [ -n "$REMOTE" ]; then
   REMOTE_USER="${REMOTE%%@*}"
@@ -66,10 +66,7 @@ if [ -n "$REMOTE" ]; then
   # The remote runs through a shell, so the flags are requoted rather than
   # interpolated raw: certbot has to run on the host that answers the ACME
   # challenge, and skipping it here would leave the site on plain HTTP.
-  REMOTE_CMD="/opt/outofband/src/deploy/install.sh"
-  if [ -n "$DOMAIN" ]; then
-    REMOTE_CMD="$REMOTE_CMD --domain $(printf '%q' "$DOMAIN") --email $(printf '%q' "$EMAIL")"
-  fi
+  REMOTE_CMD="/opt/outofband/src/deploy/install.sh --domain $(printf '%q' "$DOMAIN") --email $(printf '%q' "$EMAIL")"
 
   log_info "running install.sh on $REMOTE"
   ssh -- "$REMOTE" "$REMOTE_CMD"
@@ -149,23 +146,41 @@ curl -sf http://127.0.0.1/ >/dev/null || die "http://127.0.0.1/ did not respond"
 log_info "site check passed"
 
 CERT_ISSUED=0
-if [ -n "$DOMAIN" ]; then
-  DOMAIN_IP="$(getent hosts "$DOMAIN" 2>/dev/null | awk '{print $1}' | head -n1 || true)"
-  PUBLIC_IP="$(curl -sf --max-time 5 https://api.ipify.org || true)"
-  if [ -n "$DOMAIN_IP" ] && [ -n "$PUBLIC_IP" ] && [ "$DOMAIN_IP" = "$PUBLIC_IP" ]; then
+{
+  # Compare every address the name resolves to, both families, against every
+  # global address on this host. Matching a single resolver-preferred entry
+  # against an IPv4-only echo service fails on any dual-stack name: `getent
+  # hosts` answers with the AAAA while the echo answers with the A.
+  DOMAIN_IPS="$(getent ahosts "$DOMAIN" 2>/dev/null | awk '{print $1}' | sort -u || true)"
+  HOST_IPS="$(ip -o addr show scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | sort -u || true)"
+  for extra in "$(curl -sf --max-time 5 https://api.ipify.org || true)" \
+               "$(curl -sf --max-time 5 https://api6.ipify.org || true)"; do
+    [ -n "$extra" ] && HOST_IPS="$HOST_IPS
+$extra"
+  done
+
+  RESOLVES_HERE=0
+  for ip in $DOMAIN_IPS; do
+    for own in $HOST_IPS; do
+      [ "$ip" = "$own" ] && RESOLVES_HERE=1
+    done
+  done
+
+  if [ "$RESOLVES_HERE" -eq 1 ]; then
     log_info "$DOMAIN resolves to this host, requesting a certificate"
-    sudo sed -i "s/server_name outofband.wizardsardine.com;/server_name ${DOMAIN};/" /etc/nginx/sites-available/outofband.conf
+    sudo sed -i "s/server_name [^;]*;/server_name ${DOMAIN};/" /etc/nginx/sites-available/outofband.conf
     sudo nginx -t
     sudo systemctl reload nginx
     sudo certbot --nginx -d "$DOMAIN" --redirect --agree-tos -m "$EMAIL" -n
     CERT_ISSUED=1
   else
-    log_warn "$DOMAIN does not resolve to this host yet, skipping certbot"
+    log_warn "$DOMAIN resolves to [$(echo $DOMAIN_IPS | tr '\n' ' ')] which is not an address on this host, skipping certbot"
   fi
-fi
+}
 
-log_info "install complete, remaining manual steps:"
-log_info "  - set the real server_name in /etc/nginx/sites-available/outofband.conf, then: sudo systemctl reload nginx"
-if [ "$CERT_ISSUED" -eq 0 ]; then
-  log_info "  - once DNS points at this host: sudo certbot --nginx -d <domain> --redirect --agree-tos -m <email> -n"
+if [ "$CERT_ISSUED" -eq 1 ]; then
+  log_info "install complete, serving https://$DOMAIN"
+else
+  log_info "install complete, serving http://$DOMAIN without a certificate"
+  log_info "  once $DOMAIN points at this host: sudo certbot --nginx -d $DOMAIN --redirect --agree-tos -m $EMAIL -n"
 fi

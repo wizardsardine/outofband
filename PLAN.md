@@ -149,7 +149,7 @@ host.
 Three bash scripts under `deploy/`, each running locally with no argument
 or against `user@host` by rsync and re-exec: `install.sh` (apt deps,
 toolchain, build, nginx site and snippets, health check, optional
-`--domain/--email` certbot), `update.sh` (rebuild the bundle, reinstall it
+certbot on a defaulted domain), `update.sh` (rebuild the bundle, reinstall it
 and the managed nginx snippets, never touching certificates), `clean.sh`
 (removes the site, the snippets and the install directories, and clears
 out what an earlier backend deployment left behind).
@@ -1061,9 +1061,10 @@ Idempotent bootstrap of a fresh Debian/Ubuntu server, in order:
    run certbot.
 
 TLS: the nginx config ships as a plain port-80 server so the first install
-works before DNS or certificates exist. `install.sh` accepts an optional
-`--domain <host> --email <address>` (valid only together), overriding the
-default `outofband.wizardsardine.com`; when
+works before DNS or certificates exist. `install.sh` defaults the domain to `outofband.wizardsardine.com` and the
+certbot contact to `contact@wizardsardine.com`, so a bare install issues a
+certificate. `--domain <host>` and `--email <address>` override either
+independently; when
 given and the domain already resolves to this host, it sets `server_name`
 and runs `certbot --nginx -d <domain> --redirect --agree-tos -m <email>
 -n`, which rewrites the site for 443 with the Let's Encrypt certificate
