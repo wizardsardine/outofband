@@ -1,6 +1,7 @@
 mod app;
 mod components;
 mod hooks;
+mod i18n;
 mod queue;
 mod slipstream;
 mod tokens;
