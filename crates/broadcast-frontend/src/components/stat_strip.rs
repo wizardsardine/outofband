@@ -29,7 +29,7 @@ pub fn stat_strip(props: &StatStripProps) -> Html {
         .filter(|item| item.is_submittable())
         .count();
     let disabled = submittable == 0 || props.broadcasting;
-    let label = queue::broadcast_label(submittable, props.broadcasting);
+    let label = queue::send_label(submittable, props.broadcasting);
 
     let onclick = {
         let on_broadcast = props.on_broadcast.clone();

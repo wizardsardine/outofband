@@ -630,16 +630,16 @@ pub fn stats(items: &[QueueItem], floor: f64) -> QueueStats {
     }
 }
 
-/// The broadcast button's label: a dynamic count while more than one item
-/// is submittable, a static label otherwise. Never describes the fee
-/// rates, only the run's shape.
-pub fn broadcast_label(submittable: usize, in_flight: bool) -> String {
+/// The main send button's label. "Send batch" with a count once more than
+/// one row is submittable, since each row can also be sent on its own.
+/// Never describes the fee rates, only the run's shape.
+pub fn send_label(submittable: usize, in_flight: bool) -> String {
     if in_flight {
-        "Broadcasting…".to_string()
+        "Sending…".to_string()
     } else if submittable > 1 {
-        format!("Broadcast {submittable} transactions")
+        format!("Send batch ({submittable})")
     } else {
-        "Broadcast".to_string()
+        "Send".to_string()
     }
 }
 
@@ -849,6 +849,14 @@ mod tests {
     #[test]
     fn short_name_strips_whitespace_before_measuring() {
         assert_eq!(short_name("12 34 56 78 90"), "1234567890");
+    }
+
+    #[test]
+    fn send_label_names_the_batch_only_when_there_is_one() {
+        assert_eq!(send_label(0, false), "Send");
+        assert_eq!(send_label(1, false), "Send");
+        assert_eq!(send_label(4, false), "Send batch (4)");
+        assert_eq!(send_label(4, true), "Sending…");
     }
 
     #[test]

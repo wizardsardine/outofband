@@ -20,8 +20,8 @@ relying on this for anything.
 `just run` serves the page on `127.0.0.1:8080` over plain HTTP with `trunk
 serve`, and opens a browser; `just serve` is the same without opening one.
 There is nothing else to start, and no credential to fill in: the page
-talks to MARA directly, so the fee card and Broadcast behave in dev
-exactly as they do in production. Pressing Broadcast against the real
+talks to MARA directly, so the fee card and sending behave in dev
+exactly as they do in production. Sending against the real
 Slipstream is a real submission.
 
 `SLIPSTREAM_BASE_URL` at build time points the page at another host; with

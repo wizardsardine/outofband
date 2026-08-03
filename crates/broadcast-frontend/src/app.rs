@@ -40,7 +40,7 @@ pub fn app() -> Html {
                                 broadcasting={queue.broadcasting}
                                 on_remove={queue.on_remove.clone()}
                                 on_set_total={queue.on_set_total.clone()}
-                                on_retry={queue.on_retry.clone()}
+                                on_send={queue.on_send.clone()}
                             />
                         </div>
                     }

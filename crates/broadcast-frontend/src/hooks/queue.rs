@@ -13,7 +13,7 @@ use crate::unpack;
 /// Shown once Slipstream has answered 429 past every retry: the browser, not
 /// the transaction, is what upstream is refusing.
 const RATE_LIMIT_EXHAUSTED: &str =
-    "Slipstream is rate limiting this browser. Wait a few minutes and press Broadcast again.";
+    "Slipstream is rate limiting this browser. Wait a few minutes and send again.";
 
 /// The whole load-and-queue state: the paste box's text, the queued
 /// items, and the callbacks that mutate them. Centralized here so
@@ -35,8 +35,9 @@ pub struct QueueHandle {
     pub on_dismiss_refused: Callback<()>,
     /// Runs every submittable row, strictly sequentially, in queue order.
     pub on_broadcast: Callback<()>,
-    /// Re-attempts a single row without touching the rest of the queue.
-    pub on_retry: Callback<u64>,
+    /// Sends a single row without touching the rest of the queue, whether
+    /// or not it has been tried before.
+    pub on_send: Callback<u64>,
     /// Fed `(name, bytes)` pairs, already ordered lexicographically by
     /// name, by `use_file_load`. Unpacks and analyzes each in turn.
     pub on_files_loaded: Callback<Vec<LoadedFile>>,
@@ -326,7 +327,7 @@ pub fn use_queue() -> QueueHandle {
         })
     };
 
-    let on_retry = {
+    let on_send = {
         let items = items.clone();
         let broadcasting = broadcasting.clone();
         Callback::from(move |id: u64| {
@@ -352,7 +353,7 @@ pub fn use_queue() -> QueueHandle {
         on_submit,
         on_dismiss_refused,
         on_broadcast,
-        on_retry,
+        on_send,
         on_files_loaded,
         on_clear,
         on_remove,

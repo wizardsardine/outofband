@@ -13,7 +13,7 @@ pub struct QueueTableProps {
     pub broadcasting: bool,
     pub on_remove: Callback<u64>,
     pub on_set_total: Callback<(u64, Option<u64>)>,
-    pub on_retry: Callback<u64>,
+    pub on_send: Callback<u64>,
 }
 
 #[function_component(QueueTable)]
@@ -47,7 +47,7 @@ pub fn queue_table(props: &QueueTableProps) -> Html {
                     broadcasting={props.broadcasting}
                     on_remove={props.on_remove.clone()}
                     on_set_total={props.on_set_total.clone()}
-                    on_retry={props.on_retry.clone()}
+                    on_send={props.on_send.clone()}
                 />
             }) }
         </div>

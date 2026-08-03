@@ -16,7 +16,7 @@ pub struct QueueRowProps {
     pub broadcasting: bool,
     pub on_remove: Callback<u64>,
     pub on_set_total: Callback<(u64, Option<u64>)>,
-    pub on_retry: Callback<u64>,
+    pub on_send: Callback<u64>,
 }
 
 #[function_component(QueueRow)]
@@ -40,10 +40,10 @@ pub fn queue_row(props: &QueueRowProps) -> Html {
         Callback::from(move |_| on_remove.emit(id))
     };
 
-    let retryable = matches!(
-        item.submission,
-        SubmissionState::Rejected(_) | SubmissionState::Failed(_)
-    );
+    // Any row that can still be sent gets its own control, so a queue of
+    // several can be worked through one at a time instead of only as a batch.
+    let sendable =
+        item.is_submittable() && !matches!(item.submission, SubmissionState::RateLimited);
 
     html! {
         <div style={row_style}>
@@ -61,8 +61,8 @@ pub fn queue_row(props: &QueueRowProps) -> Html {
                 </div>
                 <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px">
                     <span style={format!("font-size:12px;font-weight:500;color:{}", status.text_color)}>{status.label}</span>
-                    if retryable {
-                        { retry_button(item.id, props.broadcasting, &props.on_retry) }
+                    if sendable {
+                        { send_button(item.id, props.broadcasting, &props.on_send, &item.submission) }
                     }
                 </div>
                 <button
@@ -110,17 +110,28 @@ fn format_chip_style() -> String {
     )
 }
 
-fn retry_button(id: u64, broadcasting: bool, on_retry: &Callback<u64>) -> Html {
+/// "Send" on a row that has not been tried, "Retry" once one has failed:
+/// the action is the same, but the word has to admit a previous attempt.
+fn send_button(
+    id: u64,
+    broadcasting: bool,
+    on_send: &Callback<u64>,
+    submission: &SubmissionState,
+) -> Html {
     let onclick = {
-        let on_retry = on_retry.clone();
-        Callback::from(move |_| on_retry.emit(id))
+        let on_send = on_send.clone();
+        Callback::from(move |_| on_send.emit(id))
+    };
+    let label = match submission {
+        SubmissionState::Rejected(_) | SubmissionState::Failed(_) => "Retry",
+        _ => "Send",
     };
     html! {
         <button
             {onclick}
             disabled={broadcasting}
             style={retry_button_style(broadcasting)}
-        >{"Retry"}</button>
+        >{label}</button>
     }
 }
 

@@ -44,7 +44,7 @@ browser
                       → vsize, fee rate (when derivable), txid
       └─> queue row   one per transaction, nothing sent yet
 
-  "Broadcast all"  sequential, one request per tx, in queue order
+  "Send batch"     sequential, one request per tx, in queue order
       │
       ▼
 MARA Slipstream, called from the tab
@@ -68,7 +68,7 @@ MARA Slipstream, called from the tab
    and does format detection, PSBT analysis, finalization, extraction,
    vsize, fee and txid. Slipstream only ever sees finalized hex. Queueing
    500 items causes no network traffic at all; nothing is checked against
-   any host until Broadcast.
+   any host until a send.
 3. **Fee rates are displayed, never enforced.** Nothing in this page
    refuses a submission over its fee. A below-floor transaction is
    submitted and bounced, because that costs one round trip and
@@ -77,7 +77,7 @@ MARA Slipstream, called from the tab
    transactions that *succeed*; withholding never protected against those.
 4. **Nothing leaves the queue.** Rejected, rate-limited and failed rows
    keep their place, their analysis, their reason and their txid, and can
-   be retried individually or by pressing Broadcast again. Every row
+   be retried individually or by pressing Send batch again. Every row
    carries a locally derived txid from the moment it is queued, so a user
    whose submission bounced can still identify the transaction they
    built. Only `×` or "Clear queue" removes a row.
@@ -131,7 +131,7 @@ seconds before giving up.
   status, a colored note card, and remove/retry controls. Fee-unknown
   rows (raw transactions, and PSBTs missing UTXO data) expose a
   "total input value" field that derives the rate, informational only.
-- Broadcast: sequential, awaited. A 429 counts down and retries the same
+- Sending: sequential, awaited. A 429 counts down and retries the same
   row in place; a rejection marks the row and continues; a network
   failure, or a 429 that outlasts the retries, marks the row and pauses
   the run.
@@ -197,7 +197,7 @@ line) and dropping/choosing files — single files, several at once, or
 archives (`.tar`, `.tar.gz`/`.tgz`, `.zip`), unpacked in the browser
 (section 4). Everything loaded lands in a queue table where each item is
 analyzed locally and shows its format, vsize, txid, fee rate when
-derivable, and how that rate compares to the floor. "Broadcast all" then
+derivable, and how that rate compares to the floor. "Send batch" then
 submits every queued transaction, one call each, sequentially, and per-item
 results (accepted, or the precise rejection reason) appear in place.
 Nothing is removed from the queue by broadcasting: a rejected or failed
@@ -227,7 +227,7 @@ transaction (previous outputs unknown), shows Fee unknown — and the row
 exposes a "total input value" field where the user can enter the summed
 input amounts, from which the fee rate is derived. All three labels are
 information the user acts on; none of them stops a submission.
-"Broadcast all" submits every queued transaction, including Below-floor
+"Send batch" submits every queued transaction, including Below-floor
 and Fee-unknown ones.
 
 This is a deliberate reversal of an earlier, stricter design in which only
@@ -354,7 +354,7 @@ Authorization header"}` without one. That credential is undocumented and
 we do not have it, so the dry-run endpoint is unavailable to this project
 regardless of design preference.
 
-Everything the page does, on load and on Broadcast, is therefore
+Everything the page does, on load and on send, is therefore
 uncredentialed.
 
 ### CORS
@@ -637,7 +637,7 @@ the split headline uses the teal range
 100%)` on the first line and the violet range
 `linear-gradient(237deg, #5433ff 0%, #6e38ff 40%, #853cff 60%, #a341ff
 80%, #ac43ff 100%)` on the second, both via `background-clip: text`.
-Primary buttons ("Add to queue", "Broadcast all") are teal-on-black
+Primary buttons ("Add to queue", "Send batch") are teal-on-black
 outlines that on hover **fill with the gradient**
 (`linear-gradient(231.49deg, #61ffe1 32.13%, #5572f5 69.65%, #a341ff
 103.41%)`, `color:#000`, transparent border) — not a color swap; the
@@ -775,10 +775,12 @@ borders (dropped on the last cell of each row). The strip is a grid of
 primary broadcast button flush right; on mobile it becomes
 `repeat(2,minmax(0,1fr))` with hairlines under the first two cells and the
 button spanning `1 / -1` full-width above a `#1f1f1f` top border. The
-button (called "Broadcast all" throughout this document) renders a dynamic
-label: `Broadcasting…` while a run is in flight, `Broadcast N
-transactions` when more than one item is submittable, otherwise
-`Broadcast`. It is disabled only while a run is in flight or nothing is
+button (called "Send batch" throughout this document) renders a dynamic
+label: `Sending…` while a run is in flight, `Send batch (n)` when more than
+one item is submittable, otherwise `Send`. Every submittable row also
+carries its own control, reading `Send` before an attempt and `Retry`
+after a rejection or failure, so a queue of several can be worked through
+one transaction at a time instead of only as a batch. It is disabled only while a run is in flight or nothing is
 submittable — where submittable means every queued row that decoded
 successfully and has not already been accepted, regardless of its fee
 rate. The three fee counts are read-outs, not preconditions; the strip
@@ -848,7 +850,7 @@ link the txid to a block explorer (base URL compiled in) — a link the
 other states omit, since an unbroadcast transaction is not there to look
 up.
 
-Broadcast behavior: "Broadcast all" iterates every submittable item —
+Send behavior: "Send batch" iterates every submittable item —
 each row that decoded successfully and has not already been accepted,
 whatever its fee rate — strictly sequentially, in queue order. Each item's
 finalized transaction hex, extracted locally by `tx-core` at queue time,
@@ -873,10 +875,10 @@ value is used instead when the browser exposes it at all, clamped to
 between 1 and 300 seconds because it comes from a host nobody here
 controls, but it is usually invisible (section 2). A fourth 429 marks the
 row `Failed` with "Slipstream is rate limiting this browser. Wait a few
-minutes and press Broadcast again." and pauses the run. A network failure
+minutes and send again." and pauses the run. A network failure
 marks the row `Failed` with the same finality, pausing the run rather than
 silently skipping. Every one of those rows keeps its txid, its analysis
-and its place in the queue, so pressing "Broadcast all" again re-attempts
+and its place in the queue, so pressing "Send batch" again re-attempts
 exactly the rows that did not succeed — after the user has fixed what
 they wanted to fix (added an input value, waited out a floor change) or
 simply because the failure was transient. Per-row `Retry` re-attempts a
@@ -1125,7 +1127,7 @@ product: `trunk serve` on `127.0.0.1:8080` over plain HTTP, with a browser
 opened. Nothing is installed, no port below 1024 is bound, no root is
 needed, and TLS, which exists only in the nginx layer that certbot
 rewrites, is simply absent. There is no config file to create and no
-credential to fill in, so the fee card and Broadcast behave in development
+credential to fill in, so the fee card and sending behave in development
 exactly as they do in production. That cuts both ways, and it is the one
 thing to keep in mind: pressing Broadcast in development submits to the
 real Slipstream. `SLIPSTREAM_BASE_URL` at build time points the page at
