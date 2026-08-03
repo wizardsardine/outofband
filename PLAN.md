@@ -1050,7 +1050,8 @@ Idempotent bootstrap of a fresh Debian/Ubuntu server, in order:
 
 TLS: the nginx config ships as a plain port-80 server so the first install
 works before DNS or certificates exist. `install.sh` accepts an optional
-`--domain example.com --email you@example.com` (valid only together); when
+`--domain <host> --email <address>` (valid only together), overriding the
+default `outofband.wizardsardine.com`; when
 given and the domain already resolves to this host, it sets `server_name`
 and runs `certbot --nginx -d <domain> --redirect --agree-tos -m <email>
 -n`, which rewrites the site for 443 with the Let's Encrypt certificate

@@ -65,16 +65,16 @@ against a remote host with `user@host` (rsyncs the project to
   system user. Leaves apt packages, the Rust toolchain, TLS certificates
   and the renewal timer in place.
 
-`install.sh` accepts `--domain example.com --email you@example.com`
-(valid only together): if the domain already resolves to the host, it sets
+The site ships with `server_name outofband.wizardsardine.com`, so a plain
+install needs no domain flag. `install.sh` also accepts
+`--domain <host> --email <address>` (valid only together) to deploy under
+a different name: if the domain already resolves to the host, it sets
 `server_name` and runs certbot automatically. Otherwise do it by hand once
-DNS points at the host: set the real `server_name` in
-`/etc/nginx/sites-available/outofband.conf` (it ships with the placeholder
-`outofband.example.com`), then reload nginx, then run certbot:
+DNS points at the host, then reload nginx and run certbot:
 
 ```
 sudo systemctl reload nginx
-sudo certbot --nginx -d <domain> --redirect --agree-tos -m <email> -n
+sudo certbot --nginx -d outofband.wizardsardine.com --redirect --agree-tos -m <email> -n
 ```
 
 Set `server_name` first, for the same reason `install.sh` sets it before

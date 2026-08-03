@@ -58,13 +58,13 @@ if [ -f "$NGINX_SITE" ] && sudo grep -qF 'include /etc/nginx/snippets/outofband-
 elif [ -f "$NGINX_SITE" ] && sudo grep -q "listen 443 ssl" "$NGINX_SITE"; then
   log_warn "legacy TLS site does not include /etc/nginx/snippets/outofband-app.conf; managed application updates are not active until the site is migrated"
 else
-  SERVER_NAME="outofband.example.com"
+  SERVER_NAME="outofband.wizardsardine.com"
   if [ -f "$NGINX_SITE" ]; then
     EXISTING_NAME="$(sudo awk '$1 == "server_name" { print $2 }' "$NGINX_SITE" | tr -d ';' | head -n1)"
     [ -n "$EXISTING_NAME" ] && SERVER_NAME="$EXISTING_NAME"
   fi
   log_info "installing nginx site conf to $NGINX_SITE"
-  sed -e "s/server_name outofband.example.com;/server_name ${SERVER_NAME};/" \
+  sed -e "s/server_name outofband.wizardsardine.com;/server_name ${SERVER_NAME};/" \
       "$PROJECT_ROOT/deploy/nginx/outofband.conf" | sudo tee "$NGINX_SITE" >/dev/null
 fi
 

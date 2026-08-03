@@ -119,9 +119,9 @@ elif sudo grep -q "listen 443 ssl" /etc/nginx/sites-available/outofband.conf; th
   log_warn "legacy TLS site does not include /etc/nginx/snippets/outofband-app.conf; managed application updates are not active until the site is migrated"
 else
   SERVER_NAME="$(sudo awk '$1 == "server_name" { print $2 }' /etc/nginx/sites-available/outofband.conf | tr -d ';' | head -n1)"
-  [ -n "$SERVER_NAME" ] || SERVER_NAME="outofband.example.com"
+  [ -n "$SERVER_NAME" ] || SERVER_NAME="outofband.wizardsardine.com"
   log_info "migrating nginx site to the managed application snippet"
-  sed "s/server_name outofband.example.com;/server_name ${SERVER_NAME};/" \
+  sed "s/server_name outofband.wizardsardine.com;/server_name ${SERVER_NAME};/" \
     "$PROJECT_ROOT/deploy/nginx/outofband.conf" | sudo tee /etc/nginx/sites-available/outofband.conf >/dev/null
 fi
 sudo ln -sf /etc/nginx/sites-available/outofband.conf /etc/nginx/sites-enabled/outofband.conf
@@ -139,7 +139,7 @@ if [ -n "$DOMAIN" ]; then
   PUBLIC_IP="$(curl -sf --max-time 5 https://api.ipify.org || true)"
   if [ -n "$DOMAIN_IP" ] && [ -n "$PUBLIC_IP" ] && [ "$DOMAIN_IP" = "$PUBLIC_IP" ]; then
     log_info "$DOMAIN resolves to this host, requesting a certificate"
-    sudo sed -i "s/server_name outofband.example.com;/server_name ${DOMAIN};/" /etc/nginx/sites-available/outofband.conf
+    sudo sed -i "s/server_name outofband.wizardsardine.com;/server_name ${DOMAIN};/" /etc/nginx/sites-available/outofband.conf
     sudo nginx -t
     sudo systemctl reload nginx
     sudo certbot --nginx -d "$DOMAIN" --redirect --agree-tos -m "$EMAIL" -n
