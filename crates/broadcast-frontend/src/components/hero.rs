@@ -4,7 +4,8 @@ use crate::components::fee_card::FeeCard;
 use crate::hooks::fee::FeeSnapshot;
 use crate::hooks::use_t;
 use crate::tokens::{
-    BORDER_STRONG, HAIRLINE, HEADLINE_GRADIENT_TEAL, HEADLINE_GRADIENT_VIOLET, TEXT_SECONDARY,
+    BORDER_STRONG, FONT_MONO, HAIRLINE, HEADLINE_GRADIENT_TEAL, HEADLINE_GRADIENT_VIOLET,
+    TEXT_SECONDARY,
 };
 
 #[derive(Properties, PartialEq)]
@@ -19,7 +20,7 @@ pub fn hero(props: &HeroProps) -> Html {
     let grid_style = hero_grid_style(props.mobile);
     let h1_style = h1_style(props.mobile);
     let chip_style = format!(
-        "font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.5px;color:{TEXT_SECONDARY};border:1px solid {BORDER_STRONG};border-radius:2px;padding:7px 11px"
+        "font-family:{FONT_MONO};font-size:11px;letter-spacing:.5px;color:{TEXT_SECONDARY};border:1px solid {BORDER_STRONG};border-radius:2px;padding:7px 11px"
     );
     let line_one_style = format!(
         "background:{HEADLINE_GRADIENT_TEAL};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent"

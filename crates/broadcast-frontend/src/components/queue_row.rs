@@ -6,8 +6,8 @@ use crate::i18n::Strings;
 use crate::queue::{self, NoteCard, QueueItem, QueueItemBody, RowStatusView, SubmissionState};
 use crate::tokens::{
     ACCENT_TEAL_BRIGHT, BLOCK_EXPLORER_TX_URL, BODY_COPY, BORDER_STRONG, CARD_NESTED, FIELD_TEXT,
-    HAIRLINE, QUEUE_ROW_COLUMNS, SURFACE_ACCEPTED, TEXT_DISABLED, TEXT_MUTED_6A, TEXT_PRIMARY,
-    TEXT_SECONDARY, TEXT_WHITE,
+    FONT_MONO, HAIRLINE, QUEUE_ROW_COLUMNS, SURFACE_ACCEPTED, TEXT_DISABLED, TEXT_MUTED_6A,
+    TEXT_PRIMARY, TEXT_SECONDARY, TEXT_WHITE,
 };
 
 #[derive(Properties, PartialEq)]
@@ -54,14 +54,14 @@ pub fn queue_row(props: &QueueRowProps) -> Html {
             <div style={row_grid_style(props.mobile)}>
                 <span style={dot_style(&status)}></span>
                 <div style={name_cell_style(props.mobile)}>
-                    <div style={format!("font-family:'IBM Plex Mono',monospace;font-size:13px;color:{TEXT_PRIMARY};overflow:hidden;text-overflow:ellipsis;white-space:nowrap")}>{item.name.clone()}</div>
+                    <div style={format!("font-family:{FONT_MONO};font-size:13px;color:{TEXT_PRIMARY};overflow:hidden;text-overflow:ellipsis;white-space:nowrap")}>{item.name.clone()}</div>
                     <div style={format!("font-size:11.5px;color:{TEXT_MUTED_6A};margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap")}>{item.origin.clone()}</div>
                 </div>
                 <span style={format_chip_style()}>{item.format.label()}</span>
-                <span style={format!("font-family:'IBM Plex Mono',monospace;font-size:13px;color:{TEXT_SECONDARY};text-align:right")}>{vsize_text(item)}</span>
+                <span style={format!("font-family:{FONT_MONO};font-size:13px;color:{TEXT_SECONDARY};text-align:right")}>{vsize_text(item)}</span>
                 <div style="text-align:right">
-                    <div style={format!("font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;color:{}", queue::rate_color(item, props.floor))}>{rate_text(item)}</div>
-                    <div style={format!("font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:{TEXT_MUTED_6A};margin-top:2px")}>{fee_sub_line(item)}</div>
+                    <div style={format!("font-family:{FONT_MONO};font-size:17px;font-weight:600;color:{}", queue::rate_color(item, props.floor))}>{rate_text(item)}</div>
+                    <div style={format!("font-family:{FONT_MONO};font-size:10.5px;color:{TEXT_MUTED_6A};margin-top:2px")}>{fee_sub_line(item)}</div>
                 </div>
                 <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px">
                     <span style={format!("font-size:12px;font-weight:500;color:{}", status.text_color)}>{status.label}</span>
@@ -110,7 +110,7 @@ fn name_cell_style(mobile: bool) -> &'static str {
 
 fn format_chip_style() -> String {
     format!(
-        "font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.5px;color:{TEXT_SECONDARY};border:1px solid {BORDER_STRONG};border-radius:2px;padding:4px 8px;justify-self:start"
+        "font-family:{FONT_MONO};font-size:11px;letter-spacing:.5px;color:{TEXT_SECONDARY};border:1px solid {BORDER_STRONG};border-radius:2px;padding:4px 8px;justify-self:start"
     )
 }
 
@@ -235,7 +235,7 @@ fn value_field_wrap_style() -> String {
 
 fn value_field_input_style() -> String {
     format!(
-        "flex:1;min-width:150px;background:#000;border:1px solid {BORDER_STRONG};border-radius:2px;color:{FIELD_TEXT};font-family:'IBM Plex Mono',monospace;font-size:13px;padding:10px 12px"
+        "flex:1;min-width:150px;background:#000;border:1px solid {BORDER_STRONG};border-radius:2px;color:{FIELD_TEXT};font-family:{FONT_MONO};font-size:13px;padding:10px 12px"
     )
 }
 
@@ -272,7 +272,7 @@ fn txid_line(item: &QueueItem) -> Html {
         html! { <span>{txid.clone()}</span> }
     };
     html! {
-        <div style={format!("display:flex;align-items:center;gap:12px;margin:14px 0 0 42px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:{color};word-break:break-all")}>
+        <div style={format!("display:flex;align-items:center;gap:12px;margin:14px 0 0 42px;font-family:{FONT_MONO};font-size:12px;color:{color};word-break:break-all")}>
             <span style={format!("color:{TEXT_MUTED_6A};letter-spacing:.6px")}>{"TXID"}</span>
             <span style="user-select:all">{txid_display}</span>
             { copy_button(txid.clone()) }

@@ -2,7 +2,7 @@ use yew::prelude::*;
 
 use crate::hooks::use_lang;
 use crate::i18n::Lang;
-use crate::tokens::{BORDER_STRONG, PROSE, TEXT_PRIMARY, TEXT_SECONDARY};
+use crate::tokens::{BORDER_STRONG, EYEBROW_TRACK, FONT_MONO, PROSE, TEXT_PRIMARY, TEXT_SECONDARY};
 
 /// Shown while an unreviewed translation is active, directly under the
 /// disclosure strip so it is read before anything it qualifies.
@@ -33,8 +33,8 @@ pub fn translation_notice() -> Html {
         "margin:0;flex:1 1 240px;min-width:0;font-size:13.5px;line-height:1.5;color:{PROSE};text-wrap:pretty"
     );
     let label_style = format!(
-        "font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;\
-         letter-spacing:1.6px;text-transform:uppercase;color:{TEXT_SECONDARY};white-space:nowrap"
+        "font-family:{FONT_MONO};font-size:10.5px;font-weight:600;\
+         letter-spacing:{EYEBROW_TRACK};text-transform:uppercase;color:{TEXT_SECONDARY};white-space:nowrap"
     );
     let button_style = format!(
         "flex:none;border:1px solid {BORDER_STRONG};border-radius:2px;background:#000;\

@@ -49,8 +49,11 @@ mod de;
 mod en;
 mod es;
 mod fr;
+mod it;
+mod ja;
 mod pt_br;
 mod ru;
+mod zh_hans;
 
 pub use markup::{RichStyles, rich};
 
@@ -62,12 +65,25 @@ pub enum Lang {
     De,
     Es,
     Fr,
+    It,
     PtBr,
     Ru,
+    Ja,
+    ZhHans,
 }
 
 impl Lang {
-    pub const ALL: [Lang; 6] = [Lang::En, Lang::De, Lang::Es, Lang::Fr, Lang::PtBr, Lang::Ru];
+    pub const ALL: [Lang; 9] = [
+        Lang::En,
+        Lang::De,
+        Lang::Es,
+        Lang::Fr,
+        Lang::It,
+        Lang::PtBr,
+        Lang::Ru,
+        Lang::Ja,
+        Lang::ZhHans,
+    ];
 
     /// BCP 47 tag, for `<html lang>` and for persistence.
     pub fn code(self) -> &'static str {
@@ -76,8 +92,14 @@ impl Lang {
             Lang::De => "de",
             Lang::Es => "es",
             Lang::Fr => "fr",
+            Lang::It => "it",
             Lang::PtBr => "pt-BR",
             Lang::Ru => "ru",
+            Lang::Ja => "ja",
+            // Simplified only. `from_tag` sends every zh-* here, including
+            // zh-TW: Traditional readers get Simplified rather than English,
+            // the same trade pt-PT makes against pt-BR.
+            Lang::ZhHans => "zh-Hans",
         }
     }
 
@@ -89,8 +111,11 @@ impl Lang {
             Lang::De => "Deutsch",
             Lang::Es => "Español",
             Lang::Fr => "Français",
+            Lang::It => "Italiano",
             Lang::PtBr => "Português",
             Lang::Ru => "Русский",
+            Lang::Ja => "日本語",
+            Lang::ZhHans => "简体中文",
         }
     }
 
@@ -106,7 +131,14 @@ impl Lang {
     pub fn reviewed(self) -> bool {
         match self {
             Lang::En => true,
-            Lang::De | Lang::Es | Lang::Fr | Lang::PtBr | Lang::Ru => false,
+            Lang::De
+            | Lang::Es
+            | Lang::Fr
+            | Lang::It
+            | Lang::PtBr
+            | Lang::Ru
+            | Lang::Ja
+            | Lang::ZhHans => false,
         }
     }
 
@@ -145,8 +177,11 @@ impl Lang {
             Lang::De => &de::STRINGS,
             Lang::Es => &es::STRINGS,
             Lang::Fr => &fr::STRINGS,
+            Lang::It => &it::STRINGS,
             Lang::PtBr => &pt_br::STRINGS,
             Lang::Ru => &ru::STRINGS,
+            Lang::Ja => &ja::STRINGS,
+            Lang::ZhHans => &zh_hans::STRINGS,
         }
     }
 
@@ -173,7 +208,11 @@ impl Lang {
                     Plural::Other
                 }
             }
-            Lang::En | Lang::De | Lang::Es | Lang::PtBr => {
+            // Chinese and Japanese do not inflect for number at all: one
+            // form covers every count, so the counted messages are written
+            // once and `Plurals::single` fills the rest.
+            Lang::Ja | Lang::ZhHans => Plural::Other,
+            Lang::En | Lang::De | Lang::Es | Lang::It | Lang::PtBr => {
                 if n == 1 {
                     Plural::One
                 } else {
@@ -210,6 +249,16 @@ impl Plurals {
             few: other,
             many: other,
             other,
+        }
+    }
+
+    /// Languages with no number inflection: the same wording for any count.
+    pub const fn single(all: &'static str) -> Self {
+        Self {
+            one: all,
+            few: all,
+            many: all,
+            other: all,
         }
     }
 
@@ -383,6 +432,15 @@ mod tests {
     }
 
     #[test]
+    fn chinese_and_japanese_have_one_form_for_every_count() {
+        for lang in [Lang::Ja, Lang::ZhHans] {
+            for n in [0, 1, 2, 5, 11, 21, 100] {
+                assert_eq!(lang.plural(n), Plural::Other, "{lang:?} n={n}");
+            }
+        }
+    }
+
+    #[test]
     fn a_region_we_do_not_carry_still_finds_its_language() {
         // pt-PT is not pt-BR, but Portuguese copy beats English copy.
         assert_eq!(Lang::from_tag("pt-PT"), Some(Lang::PtBr));
@@ -390,11 +448,17 @@ mod tests {
         assert_eq!(Lang::from_tag("de-CH"), Some(Lang::De));
         assert_eq!(Lang::from_tag("EN-GB"), Some(Lang::En));
         assert_eq!(Lang::from_tag("fr_CA"), Some(Lang::Fr));
+        // Every zh-* lands on Simplified, and ja-JP on Japanese.
+        assert_eq!(Lang::from_tag("zh-CN"), Some(Lang::ZhHans));
+        assert_eq!(Lang::from_tag("zh-TW"), Some(Lang::ZhHans));
+        assert_eq!(Lang::from_tag("zh-Hans"), Some(Lang::ZhHans));
+        assert_eq!(Lang::from_tag("zh"), Some(Lang::ZhHans));
+        assert_eq!(Lang::from_tag("ja-JP"), Some(Lang::Ja));
+        assert_eq!(Lang::from_tag("it-CH"), Some(Lang::It));
     }
 
     #[test]
     fn an_unknown_or_empty_tag_matches_nothing() {
-        assert_eq!(Lang::from_tag("ja"), None);
         assert_eq!(Lang::from_tag(""), None);
         assert_eq!(Lang::from_tag("   "), None);
         // Not a prefix match on the primary subtag: "eng" is not "en".

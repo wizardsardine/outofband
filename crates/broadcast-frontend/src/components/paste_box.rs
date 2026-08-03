@@ -6,8 +6,9 @@ use yew::prelude::*;
 use crate::hooks::use_lang;
 use crate::i18n::Strings;
 use crate::tokens::{
-    self, ACCENT_TEAL, BODY_COPY, BORDER_STRONG, CARD_NESTED, FIELD_TEXT, NOTE_CARD_ERROR, PROSE,
-    PROSE_SIZE, SURFACE_DRAG_OVER, SURFACE_PARSE_ERROR, TEXT_MUTED_6A, TEXT_SECONDARY,
+    self, ACCENT_TEAL, BODY_COPY, BORDER_STRONG, CARD_NESTED, EYEBROW_TRACK, FIELD_TEXT, FONT_MONO,
+    NOTE_CARD_ERROR, PROSE, PROSE_SIZE, SURFACE_DRAG_OVER, SURFACE_PARSE_ERROR, TEXT_MUTED_6A,
+    TEXT_SECONDARY,
 };
 
 /// Sample data on the outside, translated connective tissue in between: a
@@ -186,7 +187,7 @@ pub fn paste_box(props: &PasteBoxProps) -> Html {
                         {t.load_blurb}
                     </p>
                 </div>
-                <span style={format!("font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.6px;color:{TEXT_MUTED_6A}")}>{detected}</span>
+                <span style={format!("font-family:{FONT_MONO};font-size:11px;letter-spacing:.6px;color:{TEXT_MUTED_6A}")}>{detected}</span>
             </div>
 
             <textarea
@@ -245,8 +246,8 @@ fn parse_error_card(error: &str, t: &Strings) -> Html {
     );
     html! {
         <div {style}>
-            <div style={format!("font-size:11.5px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:{edge}")}>{t.parse_error_title}</div>
-            <p style={format!("margin:7px 0 0;font-size:13.5px;line-height:1.55;color:{text_color};font-family:'IBM Plex Mono',monospace")}>{error.to_string()}</p>
+            <div style={format!("font-size:11.5px;font-weight:600;letter-spacing:{EYEBROW_TRACK};text-transform:uppercase;color:{edge}")}>{t.parse_error_title}</div>
+            <p style={format!("margin:7px 0 0;font-size:13.5px;line-height:1.55;color:{text_color};font-family:{FONT_MONO}")}>{error.to_string()}</p>
         </div>
     }
 }
@@ -261,7 +262,7 @@ fn textarea_style(drag_over: bool) -> String {
         (BORDER_STRONG, CARD_NESTED)
     };
     format!(
-        "width:100%;box-sizing:border-box;height:214px;resize:vertical;border-radius:2px;color:{FIELD_TEXT};font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.6;padding:18px 20px;word-break:break-all;border:1px solid {border};background:{background};transition:border-color .2s ease-in-out,background .2s ease-in-out"
+        "width:100%;box-sizing:border-box;height:214px;resize:vertical;border-radius:2px;color:{FIELD_TEXT};font-family:{FONT_MONO};font-size:13px;line-height:1.6;padding:18px 20px;word-break:break-all;border:1px solid {border};background:{background};transition:border-color .2s ease-in-out,background .2s ease-in-out"
     )
 }
 

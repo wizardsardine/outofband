@@ -5,6 +5,36 @@
 //! re-deriving the values from the mockup.
 #![allow(dead_code)]
 
+/// Body and mono stacks.
+///
+/// `var(--ws-cjk)` sits between IBM Plex and the generic fallback, and
+/// `style.css` sets it per `<html lang>`. Font fallback is per glyph, so a
+/// Latin page never reaches it: IBM Plex covers Latin, Cyrillic falls to
+/// the system, and only Han/Kana characters get that far.
+///
+/// It is language-keyed rather than one long list because Chinese and
+/// Japanese share Han characters with different expected shapes. A single
+/// list starting with a Chinese face would render Japanese text in Chinese
+/// glyph forms, which reads to a Japanese speaker roughly like a swapped
+/// alphabet.
+///
+/// Nothing is downloaded for CJK. IBM Plex Sans has no CJK coverage at all,
+/// so the alternative is not "Plex CJK", it is either tens of megabytes of
+/// IBM Plex Sans SC/JP or whatever the browser picks unaided. Naming good
+/// system faces costs nothing and beats both.
+pub const FONT_SANS: &str = "'IBM Plex Sans',var(--ws-cjk),system-ui,sans-serif";
+pub const FONT_MONO: &str = "'IBM Plex Mono',var(--ws-cjk),monospace";
+
+/// Tracking for the small uppercase eyebrows.
+///
+/// A variable rather than a number because letter-spacing is a Latin
+/// device: applied to Han or Kana it prises apart characters that are
+/// already square and evenly set, so `安 全 披 露` reads as spaced-out
+/// rather than tracked. `style.css` drops it to almost nothing on a CJK
+/// page. This also normalises the 1.2/1.4/1.6/1.8px the eyebrows had
+/// drifted to, which PLAN.md section 4 always described as one value.
+pub const EYEBROW_TRACK: &str = "var(--ws-eyebrow-track)";
+
 pub const BORDER_STRONG: &str = "#2a2a2a";
 pub const HAIRLINE: &str = "#1a1a1a";
 pub const RULE: &str = "#1f1f1f";

@@ -2,7 +2,7 @@ use yew::prelude::*;
 
 use crate::components::LangPicker;
 use crate::hooks::use_t;
-use crate::tokens::{NOTE_CARD_WARN, TEXT_PRIMARY, WARNING};
+use crate::tokens::{EYEBROW_TRACK, FONT_MONO, NOTE_CARD_WARN, TEXT_PRIMARY, WARNING};
 
 /// The disclosure is the first thing on the page and stays there: someone
 /// who lands here from a link needs to read the vulnerability write-up
@@ -17,7 +17,7 @@ pub fn disclosure_strip() -> Html {
         "position:sticky;top:0;z-index:20;background:#14100a;border-bottom:1px solid {border};box-shadow:0 1px 0 0 rgba(224,179,65,.18)"
     );
     let label_style = format!(
-        "font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:{WARNING};white-space:nowrap"
+        "font-family:{FONT_MONO};font-size:11px;font-weight:700;letter-spacing:{EYEBROW_TRACK};text-transform:uppercase;color:{WARNING};white-space:nowrap"
     );
     let link_style = format!(
         "display:flex;align-items:center;gap:8px;min-width:0;font-size:15px;font-weight:600;line-height:1.35;color:{TEXT_PRIMARY};text-decoration:none"
