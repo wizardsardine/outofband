@@ -60,7 +60,7 @@ pub fn app() -> Html {
                             on_close={queue.on_dismiss_refused.clone()}
                         />
                     }
-                    <Faq fee={fee} />
+                    <Faq />
                     <Footer />
                 </div>
             </div>

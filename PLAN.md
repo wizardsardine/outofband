@@ -136,7 +136,7 @@ seconds before giving up.
   failure, or a 429 that outlasts the retries, marks the row and pauses
   the run.
 - `UI_MOCKUP.html` at the repo root is the authoritative visual
-  reference. Section 4 transcribes it and lists the ten deliberate
+  reference. Section 4 transcribes it and lists the eleven deliberate
   departures; anything not on that list is a detail to reproduce.
 
 ### Deployment
@@ -596,7 +596,7 @@ calls `tx-core` directly in wasm. This crate is the whole product.
 `UI_MOCKUP.html` at the repository root is the **authoritative visual
 reference**. Where this section and the mockup disagree on layout, color,
 spacing, radius, sizing or copy, the mockup wins and this section is to be
-corrected, with the sole exception of the ten departures enumerated at
+corrected, with the sole exception of the eleven departures enumerated at
 the end of this section, which exist because the mockup is a static prop:
 it simulates behavior it does not implement, encodes a queue policy
 that has since been reversed, and carries copy that has since been
@@ -927,30 +927,38 @@ single item without touching the rest.
 FAQ: under the eyebrow "Questions you should ask before using this", an
 accordion (single-open, chevron rotating 180° over `.2s`, teal when open)
 in a `22px 2px 22px 2px` card, entries divided by `#1a1a1a` hairlines
-except the last. The five questions, verbatim from the mockup:
+except the last. Seven questions (departure 11 — the mockup has five, and
+its wording predates both the audience scoping above and three questions
+it never asked):
 
-1. "Does this keep my transaction out of the public mempool?"
-2. "Does anything I paste get sent to your server?"
+1. "Why is this tool helpful?" — the replacement attack in full: a normal
+   broadcast gossips to every node, a holder of a key that can also spend
+   those coins can replace the transaction, and Slipstream's one-miner
+   path costs mining speed to buy immunity from that. This is the question
+   the mockup asked as "Does this keep my transaction out of the public
+   mempool?", which answers a mechanism nobody arrives wondering about.
+2. "Where does what I paste actually go?"
 3. "What does MARA learn about me?"
-4. "Am I guaranteed to get confirmed?"
-5. "Why is there a minimum fee rate at all?" — its answer interpolates the
-   live floor ("currently N sat/vB").
+4. "Am I guaranteed to get my transaction mined?" — not the mockup's "get
+   confirmed"; the thing a user is betting on here is being mined at all.
+5. "Why is the fee rate different from Mempool.space?" — Slipstream is
+   paid through the higher rate, and this page takes no share of it and no
+   compensation. This replaces "Why is there a minimum fee rate at all?":
+   the floor's meaning now lives on the fee card itself (departure 10),
+   and the question a user actually has when comparing against a block
+   explorer is where the difference goes.
+6. "What are the risks of using this service?" — MARA has to be trusted
+   not to run the replacement attack itself, which is one party to trust
+   against the whole network.
+7. "Why is this page on the Wizardsardine domain?" — Wizardsardine
+   maintains Liana, whose users had no easy route to Slipstream; the tool
+   is open to everyone else too. Its answer links `lianawallet.com`.
 
-Answers 1 and 4 are taken verbatim. Answers 2 and 3 are the mockup's in
-substance: "We operate no server and store nothing", and MARA learning
-"the IP address it arrived from", describe this page exactly, because the
-browser is what calls MARA. They are only tightened, to name where the
-maths runs and to say that the finalized hex goes straight from the tab to
-Slipstream (answer 2), and that the connection is the user's own, so MARA
-sees the address they are browsing from and Tor or a VPN is the answer if
-that matters (answer 3). Answer 5 is verbatim but for its closing clause:
-the mockup says a transaction below the floor "needs to be rebuilt at a
-higher rate before it can be submitted", which this UI no longer makes
-true. It can be submitted, and between `submit_fee_rate` and
-`effective_rate` it can even be accepted and then never mined (section 2),
-so the answer reads that a lower-rate transaction may enter Slipstream's
-private mempool but is not expected to be mined, and should be rebuilt at
-a higher rate before the submission is relied on.
+Answers are `Html`, not `String`, so question 7 can carry that link, and
+none of them interpolate the live rate: the fee card owns that number, and
+the old answer 5 gave two places to read the same figure from. Answer 2
+says "when you press Send" — the mockup's "when you press Broadcast" names
+a button this UI does not have (departure 4).
 
 Footer: separated by a `#1a1a1a` top rule, "Built by
 [Wizardsardine](https://wizardsardine.com)" on the left and the
@@ -977,7 +985,7 @@ from the live API (section 2).
 
 ### Deliberate departures from the mockup
 
-The mockup wins on everything except the following ten points, places
+The mockup wins on everything except the following eleven points, places
 where it simulates behavior it does not implement, encodes a queue
 policy that has since been reversed, or states something the copy has since
 been corrected on. Anything not on this list is a mockup detail to be
@@ -1041,6 +1049,14 @@ reproduced, not a decision to be revisited.
     number displayed when it was drafted can be under the floor by the
     time it is submitted — the same accepted-then-never-mined band as
     departure 8, reached by a different route.
+11. **The FAQ asks seven questions, not the mockup's five.** Two of the
+    mockup's are aimed at the wrong thing — it asks whether the tool keeps
+    a transaction out of the mempool (a mechanism, not a reason) and why a
+    fee floor exists at all (now answered on the fee card itself) — and it
+    never asks what the risks are, why the rate differs from a block
+    explorer, or why this is hosted on a wallet company's domain. Those
+    are the questions a visitor arrives with, and the last is the one that
+    decides whether they trust the page enough to paste into it.
 
 Beyond these, the mockup's logic is prop scaffolding wherever it stands in
 for work `tx-core` and `unpack.rs` do for real: its hand-rolled JS

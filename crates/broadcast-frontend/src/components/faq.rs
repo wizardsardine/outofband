@@ -1,20 +1,13 @@
 use yew::prelude::*;
 
-use crate::components::fee_card::format_rate;
-use crate::hooks::fee::FeeSnapshot;
 use crate::tokens::{
     ACCENT_TEAL, BODY_COPY, BORDER_STRONG, HAIRLINE, TEXT_MUTED_6A, TEXT_MUTED_7B,
 };
 
-#[derive(Properties, PartialEq)]
-pub struct FaqProps {
-    pub fee: Option<FeeSnapshot>,
-}
-
 #[function_component(Faq)]
-pub fn faq(props: &FaqProps) -> Html {
+pub fn faq() -> Html {
     let open = use_state(|| None::<usize>);
-    let entries = entries(props.fee.as_ref());
+    let entries = entries();
     let last = entries.len() - 1;
 
     let eyebrow_style = format!(
@@ -38,7 +31,7 @@ pub fn faq(props: &FaqProps) -> Html {
 
 fn faq_entry(
     question: &'static str,
-    answer: String,
+    answer: Html,
     is_last: bool,
     index: usize,
     open: &UseStateHandle<Option<usize>>,
@@ -76,52 +69,75 @@ fn faq_entry(
     }
 }
 
-fn entries(fee: Option<&FeeSnapshot>) -> Vec<(&'static str, String)> {
+/// Answers are `Html`, not `String`, so one can carry a link. Nothing here
+/// interpolates the live fee rate: the fee card owns that number, and the
+/// FAQ repeating it gave two places to read the same figure from.
+fn entries() -> Vec<(&'static str, Html)> {
     vec![
         (
-            "Does this keep my transaction out of the public mempool?",
-            "Yes. A normal broadcast gossips your transaction to every node on the network before \
-             it is mined. If someone holds a key that can also spend those coins, that window is \
-             all they need to replace you. Slipstream skips the gossip: the transaction goes to \
-             one miner and appears in a block."
-                .to_string(),
+            "Why is this tool helpful?",
+            html! {
+                {"A normal transaction broadcast gossips your transaction to every Bitcoin node on \
+                  the network before it is mined. If someone holds a key that can also spend those \
+                  coins, they can replace the transaction and steal its coins before it gets \
+                  mined. Slipstream (what this tool uses) skips the gossip: the transaction goes \
+                  to one miner without being sent to the rest of the network. It will be slower to \
+                  mine, but you will be safe from transaction replacement."}
+            },
         ),
         (
             "Where does what I paste actually go?",
-            "No. Decoding, finalizing and fee maths all run in your browser, and this site has no \
-             server in the path. The only thing that ever leaves this page is the finalized \
-             transaction hex, sent straight from your browser to MARA Slipstream when you press \
-             Broadcast."
-                .to_string(),
+            html! {
+                {"Decoding, finalizing and fee maths all run in your browser, and this site has no \
+                  server in the middle. The only thing that ever leaves this page (and your \
+                  computer) is the finalized transaction hex, sent straight from your browser to \
+                  MARA Slipstream when you press Send."}
+            },
         ),
         (
             "What does MARA learn about me?",
-            "The transaction, and your IP address. Your browser talks to MARA directly, so the \
-             connection is yours and MARA sees the address you are browsing from. MARA does not \
-             learn your PSBT metadata, your xpubs, your descriptor, or which other transactions \
-             you queued here. Use Tor or a VPN if MARA seeing your IP matters to you."
-                .to_string(),
+            html! {
+                {"The transaction details, and your IP address. Your browser talks to MARA \
+                  directly, so the connection is yours and MARA sees the address you are browsing \
+                  from. MARA does not learn your PSBT metadata, your xpubs, your descriptor, or \
+                  which other transactions you queued here. Use Tor or a VPN if MARA seeing your \
+                  IP matters to you."}
+            },
         ),
         (
-            "Am I guaranteed to get confirmed?",
-            "No. Accepted is not confirmed. MARA mines a share of blocks, not all of them, and \
-             may drop your transaction for reasons it does not have to explain. Treat this as a \
-             better chance, not a promise. If it has not confirmed after a few hours, broadcast \
-             normally."
-                .to_string(),
+            "Am I guaranteed to get my transaction mined?",
+            html! {
+                {"No. Accepted by Slipstream is not confirmed. MARA mines only a portion of \
+                  blocks, not all of them, and may drop your transaction for reasons it does not \
+                  have to explain. Treat this as a better chance, not a promise. If it has not \
+                  confirmed after a while (hours), retry."}
+            },
         ),
-        ("Why is there a minimum fee rate at all?", floor_answer(fee)),
+        (
+            "Why is the fee rate different from Mempool.space?",
+            html! {
+                {"Slipstream gets paid for the service through a higher fee rate. This website \
+                  does not take any share of the payment, or any compensation."}
+            },
+        ),
+        (
+            "What are the risks of using this service?",
+            html! {
+                {"MARA, the company behind Slipstream, has to be trusted not to perform the attack \
+                  on your transaction itself. This is an acceptable risk compared to broadcasting \
+                  it publicly and letting ANYONE perform the attack."}
+            },
+        ),
+        (
+            "Why is this page on the Wizardsardine domain?",
+            html! {
+                <>
+                    {"We (Wizardsardine) are a security company, maintaining the Liana wallet ("}
+                    <a href="https://lianawallet.com" target="_blank" rel="noopener noreferrer">{"lianawallet.com"}</a>
+                    {"). Liana users did not have an easy way to broadcast to Slipstream before \
+                      this tool, so this is a service to them, open to the rest of the community."}
+                </>
+            },
+        ),
     ]
-}
-
-fn floor_answer(fee: Option<&FeeSnapshot>) -> String {
-    let floor = match fee {
-        Some(snapshot) => format_rate(snapshot.rate_sat_vb),
-        None => "—".to_string(),
-    };
-    format!(
-        "Slipstream mines only what clears its own fee floor, currently {floor} sat/vB. A lower-rate \
-         transaction may enter Slipstream's private mempool but is not expected to be mined. Rebuild \
-         it at a higher rate before relying on the submission."
-    )
 }
