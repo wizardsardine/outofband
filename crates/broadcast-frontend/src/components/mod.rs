@@ -4,9 +4,16 @@ pub mod faq;
 pub mod fee_card;
 pub mod footer;
 pub mod hero;
+pub mod paste_box;
+pub mod queue_row;
+pub mod queue_table;
+pub mod stat_strip;
 
 pub use context_banner::ContextBanner;
 pub use disclosure_strip::DisclosureStrip;
 pub use faq::Faq;
 pub use footer::Footer;
 pub use hero::Hero;
+pub use paste_box::PasteBox;
+pub use queue_table::QueueTable;
+pub use stat_strip::StatStrip;

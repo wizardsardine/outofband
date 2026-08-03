@@ -13,6 +13,17 @@ wasm-bindgen = { workspace = true }
 gloo-net = { workspace = true }
 gloo-timers = { workspace = true, features = ["futures"] }
 wasm-bindgen-futures = { workspace = true }
-web-sys = { workspace = true, features = ["MediaQueryList", "MediaQueryListEvent", "Window"] }
+web-sys = { workspace = true, features = [
+    "MediaQueryList",
+    "MediaQueryListEvent",
+    "Window",
+    "HtmlInputElement",
+    "HtmlTextAreaElement",
+    "KeyboardEvent",
+    "Navigator",
+    "Clipboard",
+] }
 serde = { workspace = true }
+bitcoin = { workspace = true }
+tx-core = { path = "../tx-core" }
 

@@ -16,7 +16,14 @@ pub const FIELD_TEXT: &str = "#e6e6e6";
 pub const TEXT_SECONDARY: &str = "#a1a1a1";
 pub const BODY_COPY: &str = "#909090";
 pub const CARD_NESTED: &str = "#060606";
+pub const TEXT_PRIMARY: &str = "#f4f4f4";
 pub const ACCENT_TEAL: &str = "#5fe7e4";
+/// Brighter teal used for status reads (Ready/Accepted dots and labels,
+/// the "Clear the floor" count) — distinct from [`ACCENT_TEAL`], which
+/// dresses interactive outlines and hovers.
+pub const ACCENT_TEAL_BRIGHT: &str = "#61ffe1";
+/// Light blue for the in-flight ("Sending…") row state.
+pub const IN_FLIGHT: &str = "#b0def0";
 pub const ERROR_RED: &str = "#ef445f";
 pub const WARNING: &str = "#e0b341";
 
@@ -43,3 +50,22 @@ pub const HEADLINE_GRADIENT_VIOLET: &str =
 
 pub const RESPONSIVE_BREAKPOINT_QUERY: &str = "(max-width: 860px)";
 pub const FEE_POLL_INTERVAL_MS: u32 = 30_000;
+
+/// Shared grid template for the queue table's header and rows.
+pub const QUEUE_ROW_COLUMNS: &str = "26px minmax(0,2.4fr) 110px 130px 150px 120px 30px";
+
+/// Shared look for a primary teal-outline button ("Add to queue",
+/// "Broadcast"): teal on black when enabled, muted and inert when
+/// disabled. The gradient hover fill is CSS (`.primary-btn:hover`), since
+/// an inline `style` attribute cannot express `:hover`.
+pub fn primary_button_style(enabled: bool, horizontal_padding_px: u16) -> String {
+    if enabled {
+        format!(
+            "border:1px solid {ACCENT_TEAL};border-radius:2px;font-family:inherit;font-size:13.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;padding:13px {horizontal_padding_px}px;cursor:pointer;color:{ACCENT_TEAL};background:#000"
+        )
+    } else {
+        format!(
+            "border:1px solid {RULE};border-radius:2px;font-family:inherit;font-size:13.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;padding:14px {horizontal_padding_px}px;cursor:not-allowed;color:{TEXT_DISABLED};background:#0c0c0c"
+        )
+    }
+}

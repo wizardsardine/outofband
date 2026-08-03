@@ -249,9 +249,11 @@ dependencies = [
 name = "broadcast-frontend"
 version = "0.1.0"
 dependencies = [
+ "bitcoin",
  "gloo-net 0.6.0",
  "gloo-timers 0.3.0",
  "serde",
+ "tx-core",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
