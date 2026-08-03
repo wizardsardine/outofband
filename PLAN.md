@@ -136,7 +136,7 @@ seconds before giving up.
   failure, or a 429 that outlasts the retries, marks the row and pauses
   the run.
 - `UI_MOCKUP.html` at the repo root is the authoritative visual
-  reference. Section 4 transcribes it and lists the eight deliberate
+  reference. Section 4 transcribes it and lists the ten deliberate
   departures; anything not on that list is a detail to reproduce.
 
 ### Deployment
@@ -596,11 +596,11 @@ calls `tx-core` directly in wasm. This crate is the whole product.
 `UI_MOCKUP.html` at the repository root is the **authoritative visual
 reference**. Where this section and the mockup disagree on layout, color,
 spacing, radius, sizing or copy, the mockup wins and this section is to be
-corrected, with the sole exception of the eight departures enumerated at
+corrected, with the sole exception of the ten departures enumerated at
 the end of this section, which exist because the mockup is a static prop:
-it simulates behavior it does not implement and encodes a queue policy
-that has since been reversed. Everything else below is transcribed from
-it.
+it simulates behavior it does not implement, encodes a queue policy
+that has since been reversed, and carries copy that has since been
+corrected. Everything else below is transcribed from it.
 
 The mockup is a bundler-packed React page: its markup and stylesheet live
 in a JSON-escaped `__bundler/template` block, and the fonts and design-
@@ -688,34 +688,56 @@ every layout below has exactly two forms, desktop and mobile.
 ### Page structure (top to bottom)
 
 Disclosure strip: a sticky bar at the very top (`position:sticky; top:0;
-z-index:20`, `rgba(0,0,0,.94)` over a `#1a1a1a` bottom hairline, 42px
-tall), holding the mono eyebrow `SECURITY DISCLOSURE`, a 1px×14px `#2a2a2a`
-divider, and the link "Coldcard RNG vulnerability, and why you might need
-this tool" (underlined in `#4a6470` at 3px offset) followed by a 12px
-arrow-out-of-box glyph. It stays visible as the page scrolls.
+z-index:20`, `#14100a` over a `#3d3520` bottom border with a faint amber
+glow below it, 52px tall), holding a 16px warning triangle and the mono
+eyebrow `SECURITY DISCLOSURE` in `#e0b341`, then the link "Coldcard RNG
+vulnerability, and why you might need this tool" at 15px/600 in `#f4f4f4`
+(underlined in `#e0b341` at 4px offset) followed by a 13px
+arrow-out-of-box glyph. It stays visible as the page scrolls. Dressed in
+the warning palette rather than the muted chrome the mockup gave it
+(departure 9): someone who arrives from a link has to read the write-up
+before deciding whether this tool applies to them at all, so the bar has
+to read as an advisory and not as a nav bar. Its rest colour is inline, so
+the hover (`#e0b341`) needs the `.disclosure-link` class in `style.css` to
+outrank it.
 
 Context banner: directly below, a bordered card (`#0c0c0c`, `#2a2a2a`
-border, 3px `#5fe7e4` left edge, `18px 26px` padding) explaining why the
-tool exists, capped at `96ch`: "This tool exists because of a specific
-failure: keys generated with predictable randomness can be recovered by
-anyone who notices. If that is your situation, moving the coins is a race,
-and the public mempool is where you lose it." — closing with a semibold
-"Read the disclosure ›" link to the Wizardsardine Coldcard-RNG post.
+border, 3px `#5fe7e4` left edge, `18px 26px` padding) scoping who the tool
+is for, capped at `96ch`: "This tool is important for some types of users
+only — mainly Liana, Miniscript, or some types of multisig wallets", the
+three wallet names in `#f4f4f4`/600. Under that, set apart in `#e0b341`
+beside a warning triangle rather than running on from the first sentence:
+"This tool is NOT recommended for wallets critically at risk, as described
+in this blog post ›", linking to the Wizardsardine Coldcard-RNG post. The
+second line is the one that matters — someone whose keys are already
+recoverable should be reading the disclosure, not queueing transactions
+here.
 
 Hero, two columns
 (`grid-template-columns: minmax(0,1.05fr) minmax(0,.95fr)`, 60px gap,
 `align-items:center`, `padding:20px 0 60px` over a `#1a1a1a` bottom
 hairline; on mobile a 32px-gap column stack with `padding:26px 0 44px`):
-left, the eyebrow "Send directly to the miner", the gradient headline
-"Get your transactions / mined directly." (line one teal-range, line two
-violet-range, split by a `<br>`), and three mono chips 9px apart:
-`PSBT · base64`, `RAW TX · hex`, `.TXT .PSBT .TXN .TAR.GZ .ZIP`. Right,
+left, the gradient headline "Get your transactions / mined directly,
+without using the public mempool." (line one teal-range, line two
+violet-range, split by a `<br>`) at 48px desktop / 31px mobile — down from
+the mockup's 64px, where the longer second line wrapped into a block tall
+enough to push the fee card out of the fold — and three mono chips 9px
+apart: `PSBT · base64`, `RAW TX · hex`, `.TXT .PSBT .TXN .TAR.GZ .ZIP`.
+Nothing sits above the headline: the mockup's eyebrow "Send directly to
+the miner" only said what the headline itself now says. Right,
 the fee card: eyebrow "Minimum accepted fee rate", Slipstream's
 `effective_rate` (section 2) as a huge
 gradient mono number with `sat/vB` beside it in 22px `#a1a1a1` mono
 (baseline-aligned, 14px gap), a `#1f1f1f` hairline rule
 (`margin:26px 0 20px`), and, corrected from the mockup (departure 8), the
-sentence "Anything below this rate will not be mined." The number comes
+sentence "Anything below this rate will not be mined." Below that a warn
+note card (`#100d06`, `#3d3520` border, 3px `#e0b341` left edge) carries
+the guidance the number alone cannot (departure 10): the floor is
+**dynamic** — it moves with demand and is re-read every 30 s — so build at
+a rate **significantly higher** than it, or the transaction may stop
+clearing before it is mined. The interval in that sentence is interpolated
+from `FEE_POLL_INTERVAL_MS` rather than written out, so the copy cannot
+drift from the poll. The number comes
 from `GET /api/rates`, polled with `gloo-timers` every 30 s. A failed poll
 keeps the last known rate rather than wiping it, and marks it stale: the
 card then dims and adds "This rate may be out of date." A rate that is not
@@ -955,10 +977,11 @@ from the live API (section 2).
 
 ### Deliberate departures from the mockup
 
-The mockup wins on everything except the following eight points, places
-where it simulates behavior it does not implement, or encodes a queue
-policy that has since been reversed. Anything not on this list is a mockup
-detail to be reproduced, not a decision to be revisited.
+The mockup wins on everything except the following ten points, places
+where it simulates behavior it does not implement, encodes a queue
+policy that has since been reversed, or states something the copy has since
+been corrected on. Anything not on this list is a mockup detail to be
+reproduced, not a decision to be revisited.
 
 1. **Unfinalizable PSBTs are refused at load**, via the modal in
    section 1, rather than queued as a warn-note row. The mockup queues
@@ -1002,6 +1025,22 @@ detail to be reproduced, not a decision to be revisited.
    then quietly never mined (section 2). "Rejected, not queued" would be
    false for exactly the band where a user is most likely to lose coins
    while believing they succeeded.
+9. **The disclosure carries the warning palette, and the context banner
+   scopes the audience rather than arguing the tool's existence.** The
+   mockup dresses the strip as muted chrome and has the banner narrate the
+   RNG failure, which reads as "this is for you" to every visitor. It is
+   the opposite: this tool suits Liana, Miniscript and some multisig
+   users, and is *not* the right move for a wallet already critically at
+   risk — those users need the write-up, not a queue. The strip is the
+   loudest thing on the page because that redirection is the most
+   consequential thing it does.
+10. **The fee card says the floor moves and to clear it by a margin.** The
+    mockup presents `effective_rate` as a fixed number, which invites
+    building a transaction pinned to exactly it. The floor tracks demand
+    and the card re-reads it every 30 s, so a transaction built at the
+    number displayed when it was drafted can be under the floor by the
+    time it is submitted — the same accepted-then-never-mined band as
+    departure 8, reached by a different route.
 
 Beyond these, the mockup's logic is prop scaffolding wherever it stands in
 for work `tx-core` and `unpack.rs` do for real: its hand-rolled JS

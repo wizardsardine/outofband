@@ -4,9 +4,12 @@ A single static page in front of [MARA
 Slipstream](https://slipstream.mara.com): paste or drop signed PSBTs and
 raw transactions, see them decoded, finalized and priced locally, then
 submit them one at a time to Slipstream, which mines them without ever
-putting them in the public mempool. It exists for the case where a key is
-known to be compromised (predictable RNG), and a normal broadcast would
-lose the race to whoever else can spend those coins.
+putting them in the public mempool. It is useful to a narrow set of users
+— mainly Liana, Miniscript and some multisig wallets — for whom keeping a
+spend out of the public mempool changes the outcome. It is *not* the
+recommended route for a wallet critically at risk: the [Coldcard RNG
+write-up](https://wizardsardine.com/blog/coldcard-rng-vulnerability/) says
+what to do in that case, and the page says so at the top.
 
 There is no backend. Parsing, finalization, fee maths and the submission
 itself all happen in the browser, and the submission goes straight from

@@ -37,6 +37,10 @@ button { transition: all .2s ease-in-out; }
 
 .remove-btn:hover:not(:disabled) { color: #ef445f !important; }
 
+/* The disclosure link carries its rest colour inline (it sits on the warning
+   bar, not on the page background), which outranks the global `a:hover`. */
+.disclosure-link:hover { color: #e0b341 !important; }
+
 /* A button whose label changes must not resize under the pointer. The
    hidden sizer holds the widest label the button can show; the visible
    label is stacked on top of it in the same grid cell. */
