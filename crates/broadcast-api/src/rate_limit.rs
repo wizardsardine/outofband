@@ -130,6 +130,7 @@ pub fn resolve_client_ip(headers: &HeaderMap, peer: SocketAddr) -> IpAddr {
 mod tests {
     use super::*;
     use axum::http::HeaderValue;
+    use std::sync::{Arc, Barrier};
 
     fn ip(s: &str) -> IpAddr {
         s.parse().unwrap()
@@ -177,63 +178,97 @@ mod tests {
         let limiter = RateLimiter::new(Duration::from_secs(600), 1);
         let a = ip("10.0.0.4");
         let b = ip("10.0.0.5");
-        limiter.record(a);
-        assert!(limiter.check(a).is_err());
-        assert!(limiter.check(b).is_ok());
+        limiter.check_and_record(a).unwrap();
+        assert!(limiter.check_and_record(a).is_err());
+        assert!(limiter.check_and_record(b).is_ok());
     }
 
     #[test]
     fn localhost_is_exempt_beyond_max_tx() {
         let limiter = RateLimiter::new(Duration::from_secs(600), 1);
         for _ in 0..10 {
-            assert!(limiter.check(LOCALHOST_V4).is_ok());
-            limiter.record(LOCALHOST_V4);
-            assert!(limiter.check(LOCALHOST_V6).is_ok());
-            limiter.record(LOCALHOST_V6);
+            assert!(limiter.check_and_record(LOCALHOST_V4).is_ok());
+            assert!(limiter.check_and_record(LOCALHOST_V6).is_ok());
         }
     }
 
     #[test]
-    fn check_without_record_does_not_consume_allowance() {
-        let limiter = RateLimiter::new(Duration::from_secs(600), 1);
+    fn concurrent_requests_cannot_exceed_limit() {
+        let max_tx = 4;
+        let threads = 32;
+        let limiter = RateLimiter::new(Duration::from_secs(600), max_tx);
         let client = ip("10.0.0.6");
-        assert!(limiter.check(client).is_ok());
-        assert!(limiter.check(client).is_ok());
-        limiter.record(client);
-        assert!(limiter.check(client).is_err());
+        let barrier = Arc::new(Barrier::new(threads));
+        let handles: Vec<_> = (0..threads)
+            .map(|_| {
+                let limiter = limiter.clone();
+                let barrier = barrier.clone();
+                std::thread::spawn(move || {
+                    barrier.wait();
+                    limiter.check_and_record(client).is_ok()
+                })
+            })
+            .collect();
+
+        let admitted = handles
+            .into_iter()
+            .map(|handle| handle.join().unwrap())
+            .filter(|admitted| *admitted)
+            .count();
+        assert_eq!(admitted, max_tx);
     }
 
     #[tokio::test]
-    async fn map_does_not_grow_unboundedly() {
+    async fn global_cleanup_is_periodic() {
         let window = Duration::from_millis(50);
-        let limiter = RateLimiter::new(window, 5);
-        let client = ip("10.0.0.7");
-        limiter.record(client);
-        assert_eq!(limiter.requests.lock().unwrap().len(), 1);
+        let limiter = RateLimiter::new(window, 1);
+        for last_octet in 1..=200 {
+            let client = IpAddr::V4(Ipv4Addr::new(10, 0, 0, last_octet));
+            limiter.check_and_record(client).unwrap();
+        }
+        assert_eq!(limiter.state.lock().unwrap().requests.len(), 200);
 
         tokio::time::sleep(window + Duration::from_millis(10)).await;
-        assert!(limiter.check(client).is_ok());
-        assert_eq!(limiter.requests.lock().unwrap().len(), 0);
+        limiter.check_and_record(ip("10.0.1.1")).unwrap();
+        assert_eq!(limiter.state.lock().unwrap().requests.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn current_ip_is_pruned_before_periodic_cleanup() {
+        let window = Duration::from_millis(50);
+        let limiter = RateLimiter::new(window, 1);
+        let client = ip("10.0.0.1");
+        limiter.check_and_record(client).unwrap();
+
+        tokio::time::sleep(window + Duration::from_millis(10)).await;
+        limiter.state.lock().unwrap().last_cleanup = Instant::now();
+
+        assert!(limiter.check_and_record(client).is_ok());
+        assert_eq!(limiter.state.lock().unwrap().requests.len(), 1);
     }
 
     #[test]
-    fn resolve_ip_prefers_first_x_forwarded_for_entry() {
+    fn resolve_ip_prefers_nginx_overwritten_x_real_ip() {
         let mut headers = HeaderMap::new();
         headers.insert(
             "x-forwarded-for",
-            HeaderValue::from_static("203.0.113.5, 10.0.0.1"),
+            HeaderValue::from_static("192.0.2.44, 203.0.113.5"),
         );
         headers.insert("x-real-ip", HeaderValue::from_static("198.51.100.9"));
         assert_eq!(
             resolve_client_ip(&headers, peer("127.0.0.1:1234")),
-            ip("203.0.113.5")
+            ip("198.51.100.9")
         );
     }
 
     #[test]
-    fn resolve_ip_falls_back_to_x_real_ip() {
+    fn resolve_ip_falls_back_to_last_x_forwarded_for_entry() {
         let mut headers = HeaderMap::new();
-        headers.insert("x-real-ip", HeaderValue::from_static("198.51.100.9"));
+        headers.insert("x-real-ip", HeaderValue::from_static("not-an-ip"));
+        headers.insert(
+            "x-forwarded-for",
+            HeaderValue::from_static("192.0.2.44, 198.51.100.9"),
+        );
         assert_eq!(
             resolve_client_ip(&headers, peer("127.0.0.1:1234")),
             ip("198.51.100.9")
@@ -250,13 +285,13 @@ mod tests {
     }
 
     #[test]
-    fn resolve_ip_falls_through_malformed_x_forwarded_for() {
+    fn resolve_ip_ignores_spoofed_headers_from_non_proxy_peer() {
         let mut headers = HeaderMap::new();
-        headers.insert("x-forwarded-for", HeaderValue::from_static("not-an-ip"));
+        headers.insert("x-forwarded-for", HeaderValue::from_static("192.0.2.44"));
         headers.insert("x-real-ip", HeaderValue::from_static("198.51.100.9"));
         assert_eq!(
-            resolve_client_ip(&headers, peer("127.0.0.1:1234")),
-            ip("198.51.100.9")
+            resolve_client_ip(&headers, peer("203.0.113.5:1234")),
+            ip("203.0.113.5")
         );
     }
 }
