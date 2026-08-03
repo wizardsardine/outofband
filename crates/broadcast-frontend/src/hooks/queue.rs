@@ -46,7 +46,18 @@ pub struct QueueHandle {
 /// (which can be mid-await for a long time) can never clobber an add,
 /// remove, or edit made by another callback while it's in flight.
 #[derive(PartialEq)]
-struct QueueState(Vec<QueueItem>);
+struct QueueState {
+    items: Vec<QueueItem>,
+    next_id: u64,
+}
+
+fn extend_with_ids(state: &mut QueueState, new_items: Vec<QueueItem>) {
+    for mut item in new_items {
+        item.id = state.next_id;
+        state.next_id += 1;
+        state.items.push(item);
+    }
+}
 
 enum QueueAction {
     /// Appends newly analyzed rows (from a paste or a file/archive load).
@@ -65,13 +76,16 @@ impl Reducible for QueueState {
     type Action = QueueAction;
 
     fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
-        let mut items = self.0.clone();
+        let mut state = QueueState {
+            items: self.items.clone(),
+            next_id: self.next_id,
+        };
         match action {
-            QueueAction::Extend(new_items) => items.extend(new_items),
-            QueueAction::Clear => items.clear(),
-            QueueAction::Remove(id) => items.retain(|item| item.id != id),
+            QueueAction::Extend(new_items) => extend_with_ids(&mut state, new_items),
+            QueueAction::Clear => state.items.clear(),
+            QueueAction::Remove(id) => state.items.retain(|item| item.id != id),
             QueueAction::SetTotal(id, total) => {
-                if let Some(item) = items.iter_mut().find(|item| item.id == id) {
+                if let Some(item) = state.items.iter_mut().find(|item| item.id == id) {
                     item.total_input_override = total;
                 }
             }
@@ -80,7 +94,7 @@ impl Reducible for QueueState {
                 submission,
                 note,
             } => {
-                if let Some(item) = items.iter_mut().find(|item| item.id == id) {
+                if let Some(item) = state.items.iter_mut().find(|item| item.id == id) {
                     item.submission = submission;
                     match note {
                         NoteUpdate::Unchanged => {}
@@ -90,7 +104,7 @@ impl Reducible for QueueState {
                 }
             }
         }
-        Rc::new(QueueState(items))
+        Rc::new(state)
     }
 }
 
@@ -117,8 +131,10 @@ impl Reducible for RefusedState {
 }
 
 pub fn use_queue() -> QueueHandle {
-    let items = use_reducer(|| QueueState(Vec::new()));
-    let next_id = use_state(|| 0u64);
+    let items = use_reducer(|| QueueState {
+        items: Vec::new(),
+        next_id: 0,
+    });
     let raw_text = use_state(String::new);
     let parse_error = use_state(|| None::<String>);
     let broadcasting = use_state(|| false);
@@ -136,7 +152,6 @@ pub fn use_queue() -> QueueHandle {
     let on_submit = {
         let raw_text = raw_text.clone();
         let items = items.clone();
-        let next_id = next_id.clone();
         let parse_error = parse_error.clone();
         let refused_psbts = refused_psbts.clone();
         Callback::from(move |()| {
@@ -145,17 +160,16 @@ pub fn use_queue() -> QueueHandle {
                 parse_error.set(Some(refusal.to_string()));
                 return;
             }
-            let mut id = *next_id;
             let mut queued = Vec::with_capacity(lines.len());
             let mut refused = Vec::new();
             for line in &lines {
-                match queue::analyze(id, queue::short_name(line), "pasted".to_string(), line) {
+                match queue::analyze(
+                    0, queue::short_name(line), "pasted".to_string(), line) {
                     AnalyzeOutcome::Queued(item) => queued.push(*item),
                     AnalyzeOutcome::UnfinalizablePsbt { name, reason } => {
                             refused.push((name, reason))
                         }
                 }
-                id += 1;
             }
 
             // A lone pasted entry that failed to decode renders inline instead
@@ -170,7 +184,6 @@ pub fn use_queue() -> QueueHandle {
                 return;
             }
 
-            next_id.set(id);
             parse_error.set(None);
             if !refused.is_empty() {
                 refused_psbts.dispatch(RefusedAction::Extend(refused));
@@ -252,7 +265,7 @@ pub fn use_queue() -> QueueHandle {
                 return;
             }
             let ids: Vec<u64> = items
-                .0
+                .items
                 .iter()
                 .filter(|item| item.is_submittable())
                 .map(|item| item.id)
@@ -286,7 +299,7 @@ pub fn use_queue() -> QueueHandle {
     };
 
     QueueHandle {
-        items: items.0.clone(),
+        items: items.items.clone(),
         raw_text: (*raw_text).clone(),
         parse_error: (*parse_error).clone(),
         broadcasting: *broadcasting,
@@ -362,7 +375,7 @@ async fn run_broadcast(
     broadcasting: UseStateHandle<bool>,
     ids: Vec<u64>,
 ) {
-    let local = items.0.clone();
+    let local = items.items.clone();
     for id in ids {
         let Some(tx_hex) = submittable_tx_hex(&local, id) else {
             continue;
