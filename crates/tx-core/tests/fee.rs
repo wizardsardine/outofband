@@ -4,8 +4,9 @@ use bitcoin::psbt::Input;
 use bitcoin::transaction::Version;
 use bitcoin::{Amount, OutPoint, Psbt, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid};
 use tx_core::{
-    AmountOverflowError, FloorComparison, InputSum, PsbtFee, compare_to_floor, fee_from_user_total,
-    fee_rate, finalize, output_sum, psbt_fee, psbt_input_sum, psbt_output_sum, vsize,
+    AmountOverflowError, FinalizedPsbt, FloorComparison, InputSum, PsbtAnalysisError, PsbtFee,
+    PsbtValidationError, compare_to_floor, fee_from_user_total, fee_rate, finalize, output_sum,
+    psbt_fee, psbt_input_sum, psbt_output_sum, vsize,
 };
 
 /// A previous output an input can spend: either UTXO data or none at all.
@@ -77,6 +78,11 @@ fn psbt(inputs: &[Utxo], outputs: &[u64]) -> Psbt {
             Utxo::Missing => Input::default(),
         })
         .collect();
+    for (tx_in, input) in psbt.unsigned_tx.input.iter_mut().zip(psbt.inputs.iter()) {
+        if let Some(previous_tx) = &input.non_witness_utxo {
+            tx_in.previous_output.txid = previous_tx.compute_txid();
+        }
+    }
     psbt
 }
 
@@ -232,7 +238,74 @@ fn output_sum_reports_overflow_instead_of_an_exact_value() {
             },
         ],
     };
-    assert_eq!(output_sum(&tx), u64::MAX);
+    assert_eq!(output_sum(&tx), Err(AmountOverflowError));
+}
+
+#[test]
+fn psbt_map_counts_are_validated() {
+    let mut input_mismatch = psbt(&[Utxo::Witness(1_000)], &[900]);
+    input_mismatch.inputs.clear();
+    assert_eq!(
+        psbt_input_sum(&input_mismatch),
+        Err(PsbtAnalysisError::InvalidPsbt(
+            PsbtValidationError::InputCountMismatch {
+                transaction: 1,
+                maps: 0,
+            }
+        ))
+    );
+
+    let mut output_mismatch = psbt(&[Utxo::Witness(1_000)], &[900]);
+    output_mismatch.outputs.clear();
+    assert_eq!(
+        psbt_output_sum(&output_mismatch),
+        Err(PsbtAnalysisError::InvalidPsbt(
+            PsbtValidationError::OutputCountMismatch {
+                transaction: 1,
+                maps: 0,
+            }
+        ))
+    );
+}
+
+#[test]
+fn non_witness_utxo_txid_and_vout_are_validated() {
+    let mut wrong_txid = psbt(&[Utxo::NonWitness(1_000)], &[900]);
+    wrong_txid.unsigned_tx.input[0].previous_output.txid = Txid::all_zeros();
+    assert_eq!(
+        psbt_input_sum(&wrong_txid),
+        Err(PsbtAnalysisError::InvalidPsbt(
+            PsbtValidationError::NonWitnessTxidMismatch { input: 0 }
+        ))
+    );
+
+    let mut bad_vout = psbt(&[Utxo::NonWitness(1_000)], &[900]);
+    bad_vout.unsigned_tx.input[0].previous_output.vout = 1;
+    assert_eq!(
+        psbt_input_sum(&bad_vout),
+        Err(PsbtAnalysisError::InvalidPsbt(
+            PsbtValidationError::NonWitnessVoutOutOfBounds {
+                input: 0,
+                vout: 1,
+                outputs: 1,
+            }
+        ))
+    );
+}
+
+#[test]
+fn witness_and_non_witness_utxos_must_match() {
+    let mut psbt = psbt(&[Utxo::NonWitness(1_000)], &[900]);
+    psbt.inputs[0].witness_utxo = Some(TxOut {
+        value: Amount::from_sat(999),
+        script_pubkey: ScriptBuf::new(),
+    });
+    assert_eq!(
+        psbt_fee(&psbt),
+        Err(PsbtAnalysisError::InvalidPsbt(
+            PsbtValidationError::WitnessUtxoMismatch { input: 0 }
+        ))
+    );
 }
 
 #[test]
@@ -282,7 +355,7 @@ fn vsize_and_fee_rate_compose_end_to_end_on_a_finalized_transaction() {
         ..Default::default()
     }];
 
-    let fee = match psbt_fee(&psbt) {
+    let fee = match psbt_fee(&psbt).expect("valid PSBT") {
         PsbtFee::Known { fee_sats } => fee_sats,
         PsbtFee::Unknown { .. } => panic!("every input carries witness_utxo"),
     };
@@ -292,7 +365,10 @@ fn vsize_and_fee_rate_compose_end_to_end_on_a_finalized_transaction() {
     keymap.insert(public_key, private_key);
     psbt.sign(&keymap, &secp).expect("signs cleanly");
 
-    let tx = finalize(psbt).expect("complete PSBT finalizes");
+    let tx = match finalize(psbt).expect("complete PSBT finalizes") {
+        FinalizedPsbt::Validated(tx) => tx,
+        FinalizedPsbt::Unchecked { .. } => panic!("fixture has every UTXO"),
+    };
     let vsize = vsize(&tx);
     assert!(vsize > 0);
 

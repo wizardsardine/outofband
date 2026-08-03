@@ -210,43 +210,195 @@ pub fn analyze_signatures(psbt: &Psbt) -> SignatureAnalysis {
     SignatureAnalysis { inputs }
 }
 
-/// A PSBT could not be finalized because one or more inputs are missing
-/// signatures. Carries how many; the item must not reach the queue.
-#[derive(Debug)]
-pub struct IncompleteSignaturesError {
-    pub incomplete_inputs: usize,
+/// A PSBT has inconsistent map or UTXO data.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PsbtValidationError {
+    InputCountMismatch {
+        transaction: usize,
+        maps: usize,
+    },
+    OutputCountMismatch {
+        transaction: usize,
+        maps: usize,
+    },
+    NonWitnessTxidMismatch {
+        input: usize,
+    },
+    NonWitnessVoutOutOfBounds {
+        input: usize,
+        vout: u32,
+        outputs: usize,
+    },
+    WitnessUtxoMismatch {
+        input: usize,
+    },
 }
 
-impl fmt::Display for IncompleteSignaturesError {
+impl fmt::Display for PsbtValidationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "PSBT cannot be finalized: {} input(s) missing signatures",
-            self.incomplete_inputs
-        )
+        match self {
+            Self::InputCountMismatch { transaction, maps } => write!(
+                f,
+                "PSBT has {transaction} transaction input(s) but {maps} input map(s)"
+            ),
+            Self::OutputCountMismatch { transaction, maps } => write!(
+                f,
+                "PSBT has {transaction} transaction output(s) but {maps} output map(s)"
+            ),
+            Self::NonWitnessTxidMismatch { input } => {
+                write!(f, "PSBT input {input} non-witness UTXO has the wrong txid")
+            }
+            Self::NonWitnessVoutOutOfBounds {
+                input,
+                vout,
+                outputs,
+            } => write!(
+                f,
+                "PSBT input {input} references vout {vout}, but its non-witness UTXO has {outputs} output(s)"
+            ),
+            Self::WitnessUtxoMismatch { input } => write!(
+                f,
+                "PSBT input {input} witness and non-witness UTXOs do not match"
+            ),
+        }
     }
 }
 
-impl std::error::Error for IncompleteSignaturesError {}
+impl std::error::Error for PsbtValidationError {}
+
+fn validate_psbt_utxos(psbt: &Psbt) -> Result<(), PsbtValidationError> {
+    if psbt.unsigned_tx.input.len() != psbt.inputs.len() {
+        return Err(PsbtValidationError::InputCountMismatch {
+            transaction: psbt.unsigned_tx.input.len(),
+            maps: psbt.inputs.len(),
+        });
+    }
+    if psbt.unsigned_tx.output.len() != psbt.outputs.len() {
+        return Err(PsbtValidationError::OutputCountMismatch {
+            transaction: psbt.unsigned_tx.output.len(),
+            maps: psbt.outputs.len(),
+        });
+    }
+
+    for (index, (tx_in, input)) in psbt
+        .unsigned_tx
+        .input
+        .iter()
+        .zip(psbt.inputs.iter())
+        .enumerate()
+    {
+        let Some(previous_tx) = &input.non_witness_utxo else {
+            continue;
+        };
+        if previous_tx.compute_txid() != tx_in.previous_output.txid {
+            return Err(PsbtValidationError::NonWitnessTxidMismatch { input: index });
+        }
+        let referenced_output = previous_tx
+            .output
+            .get(tx_in.previous_output.vout as usize)
+            .ok_or(PsbtValidationError::NonWitnessVoutOutOfBounds {
+                input: index,
+                vout: tx_in.previous_output.vout,
+                outputs: previous_tx.output.len(),
+            })?;
+        if input
+            .witness_utxo
+            .as_ref()
+            .is_some_and(|witness_utxo| witness_utxo != referenced_output)
+        {
+            return Err(PsbtValidationError::WitnessUtxoMismatch { input: index });
+        }
+    }
+
+    Ok(())
+}
+
+/// A PSBT could not be finalized or its finalized scripts failed validation.
+#[derive(Debug)]
+pub enum FinalizeError {
+    InvalidPsbt(PsbtValidationError),
+    Miniscript(Vec<miniscript::psbt::Error>),
+}
+
+impl fmt::Display for FinalizeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidPsbt(error) => write!(f, "PSBT cannot be finalized: {error}"),
+            Self::Miniscript(errors) if errors.is_empty() => {
+                write!(f, "PSBT cannot be finalized: no cause was provided")
+            }
+            Self::Miniscript(errors) if errors.len() == 1 => {
+                write!(f, "PSBT cannot be finalized: {}", errors[0])
+            }
+            Self::Miniscript(errors) => write!(
+                f,
+                "PSBT cannot be finalized: {} input(s) failed; first error: {}",
+                errors.len(),
+                errors[0]
+            ),
+        }
+    }
+}
+
+impl std::error::Error for FinalizeError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::InvalidPsbt(error) => Some(error),
+            Self::Miniscript(errors) => errors
+                .first()
+                .map(|error| error as &(dyn std::error::Error + 'static)),
+        }
+    }
+}
+
+/// A transaction extracted from a finalized PSBT.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FinalizedPsbt {
+    /// Every input's final scripts passed miniscript's interpreter checks.
+    Validated(Transaction),
+    /// Missing UTXO data prevented final-script and fee validation.
+    Unchecked {
+        transaction: Transaction,
+        missing_utxo_inputs: usize,
+    },
+}
 
 /// Finalizes `psbt` and extracts its network-serialized transaction.
 ///
 /// Already-finalized inputs are left untouched, inputs with complete
 /// signatures are finalized in place, and if any input is still missing
-/// signatures afterward this returns [`IncompleteSignaturesError`] carrying
-/// how many rather than extracting a partial transaction.
+/// signatures afterward this returns [`FinalizeError`] with the miniscript
+/// causes rather than extracting a partial transaction.
 ///
-/// Uses [`Psbt::extract_tx_unchecked_fee_rate`], not `extract_tx`: the
-/// latter refuses transactions whose fee rate it judges absurd, which is a
-/// fee gate this project does not apply anywhere else.
-pub fn finalize(mut psbt: Psbt) -> Result<Transaction, IncompleteSignaturesError> {
-    let secp = Secp256k1::new();
-    if let Err(errors) = psbt.finalize_mut(&secp) {
-        return Err(IncompleteSignaturesError {
-            incomplete_inputs: errors.len(),
+/// Uses miniscript's checked extractor when every input has UTXO data. An
+/// already-finalized PSBT missing UTXO data is extracted without fee-rate or
+/// final-script validation, at the same trust level as an accepted raw
+/// transaction.
+pub fn finalize(mut psbt: Psbt) -> Result<FinalizedPsbt, FinalizeError> {
+    validate_psbt_utxos(&psbt).map_err(FinalizeError::InvalidPsbt)?;
+
+    let missing_utxo_inputs = psbt
+        .inputs
+        .iter()
+        .filter(|input| input.witness_utxo.is_none() && input.non_witness_utxo.is_none())
+        .count();
+    let finalized = psbt
+        .inputs
+        .iter()
+        .all(|input| input.final_script_sig.is_some() || input.final_script_witness.is_some());
+    if missing_utxo_inputs > 0 && finalized {
+        return Ok(FinalizedPsbt::Unchecked {
+            transaction: psbt.extract_tx_unchecked_fee_rate(),
+            missing_utxo_inputs,
         });
     }
-    Ok(psbt.extract_tx_unchecked_fee_rate())
+
+    let secp = Secp256k1::new();
+    psbt.finalize_mut(&secp)
+        .map_err(FinalizeError::Miniscript)?;
+    psbt.extract(&secp)
+        .map(FinalizedPsbt::Validated)
+        .map_err(|error| FinalizeError::Miniscript(vec![error]))
 }
 
 /// Network-serializes `tx`: the bytes ever sent to the server.
@@ -294,8 +446,46 @@ pub fn output_sum(tx: &Transaction) -> Result<u64, AmountOverflowError> {
 /// Sum of a PSBT's unsigned-transaction output values, in satoshis:
 /// available whether or not the PSBT's inputs carry UTXO data, so a
 /// partial-UTXO PSBT is never stranded without a known output sum.
-pub fn psbt_output_sum(psbt: &Psbt) -> Result<u64, AmountOverflowError> {
-    output_sum(&psbt.unsigned_tx)
+pub fn psbt_output_sum(psbt: &Psbt) -> Result<u64, PsbtAnalysisError> {
+    validate_psbt_utxos(psbt)?;
+    output_sum(&psbt.unsigned_tx).map_err(Into::into)
+}
+
+/// A PSBT cannot be analyzed exactly.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PsbtAnalysisError {
+    InvalidPsbt(PsbtValidationError),
+    AmountOverflow,
+}
+
+impl fmt::Display for PsbtAnalysisError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidPsbt(error) => error.fmt(f),
+            Self::AmountOverflow => AmountOverflowError.fmt(f),
+        }
+    }
+}
+
+impl std::error::Error for PsbtAnalysisError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::InvalidPsbt(error) => Some(error),
+            Self::AmountOverflow => None,
+        }
+    }
+}
+
+impl From<PsbtValidationError> for PsbtAnalysisError {
+    fn from(error: PsbtValidationError) -> Self {
+        Self::InvalidPsbt(error)
+    }
+}
+
+impl From<AmountOverflowError> for PsbtAnalysisError {
+    fn from(_: AmountOverflowError) -> Self {
+        Self::AmountOverflow
+    }
 }
 
 /// The known-input-value state of a PSBT.
@@ -312,7 +502,8 @@ pub enum InputSum {
 /// returns [`InputSum::Unknown`] with the count missing rather than an
 /// exact sum over a subset — a partial sum would silently understate the
 /// fee.
-pub fn psbt_input_sum(psbt: &Psbt) -> Result<InputSum, AmountOverflowError> {
+pub fn psbt_input_sum(psbt: &Psbt) -> Result<InputSum, PsbtAnalysisError> {
+    validate_psbt_utxos(psbt)?;
     let mut sum = 0u64;
     let mut missing = 0usize;
 
@@ -332,7 +523,7 @@ pub fn psbt_input_sum(psbt: &Psbt) -> Result<InputSum, AmountOverflowError> {
             Some(value) => {
                 sum = sum
                     .checked_add(value.to_sat())
-                    .ok_or(AmountOverflowError)?;
+                    .ok_or(PsbtAnalysisError::AmountOverflow)?;
             }
             None => missing += 1,
         }
@@ -359,7 +550,7 @@ pub enum PsbtFee {
 }
 
 /// Derives a PSBT's fee from its inputs' UTXO data and its outputs.
-pub fn psbt_fee(psbt: &Psbt) -> Result<PsbtFee, AmountOverflowError> {
+pub fn psbt_fee(psbt: &Psbt) -> Result<PsbtFee, PsbtAnalysisError> {
     match psbt_input_sum(psbt)? {
         InputSum::Known(input_sum) => {
             let output_sum = output_sum(&psbt.unsigned_tx)?;

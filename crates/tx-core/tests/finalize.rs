@@ -10,7 +10,10 @@ use bitcoin::{
     Amount, Network, OutPoint, PrivateKey, Psbt, PublicKey, ScriptBuf, Sequence, Transaction, TxIn,
     TxOut, Txid, Witness,
 };
-use tx_core::{IncompleteSignaturesError, analyze_signatures, finalize, serialize, serialize_hex};
+use tx_core::{
+    FinalizeError, FinalizedPsbt, PsbtValidationError, analyze_signatures, finalize, serialize,
+    serialize_hex,
+};
 
 const TX_HEX: &str = include_str!("fixtures/tx.hex");
 const TX_BINARY: &[u8] = include_bytes!("fixtures/tx.bin");
@@ -94,6 +97,13 @@ fn p2wpkh_psbt(sign: &[bool], input_value: Amount, output_value: Amount) -> Psbt
     psbt
 }
 
+fn validated_tx(psbt: Psbt) -> Transaction {
+    match finalize(psbt).expect("complete PSBT finalizes") {
+        FinalizedPsbt::Validated(tx) => tx,
+        FinalizedPsbt::Unchecked { .. } => panic!("fixture has every UTXO"),
+    }
+}
+
 #[test]
 fn complete_signatures_finalizes_and_extracts() {
     let psbt = p2wpkh_psbt(&[true], NORMAL_INPUT_VALUE, NORMAL_OUTPUT_VALUE);
@@ -107,7 +117,7 @@ fn complete_signatures_finalizes_and_extracts() {
         "signed but not yet finalized"
     );
 
-    let tx = finalize(psbt).expect("complete PSBT finalizes");
+    let tx = validated_tx(psbt);
     assert_eq!(tx.input.len(), 1);
     assert_eq!(tx.input[0].witness.len(), 2, "signature and pubkey");
     assert_eq!(
@@ -119,7 +129,7 @@ fn complete_signatures_finalizes_and_extracts() {
 #[test]
 fn already_finalized_extracts_directly_with_known_txid() {
     let psbt = p2wpkh_psbt(&[true], NORMAL_INPUT_VALUE, NORMAL_OUTPUT_VALUE);
-    let finalized_tx = finalize(psbt.clone()).expect("complete PSBT finalizes");
+    let finalized_tx = validated_tx(psbt.clone());
 
     // Build a second PSBT that starts already finalized: the final witness
     // is present from the start, no partial signature ever recorded.
@@ -132,12 +142,56 @@ fn already_finalized_extracts_directly_with_known_txid() {
     assert!(analysis.inputs[0].finalized);
     assert_eq!(analysis.incomplete_inputs(), 0);
 
-    let tx = finalize(already_finalized).expect("already-finalized PSBT extracts");
+    let tx = validated_tx(already_finalized);
     assert_eq!(
         tx.compute_txid().to_string(),
         "4c3b230fe3b4dceeee47a3642e27c75b7b7011fcb46d0bec1cffb18d1559fa8f"
     );
     assert_eq!(tx.compute_txid(), finalized_tx.compute_txid());
+}
+
+#[test]
+fn already_finalized_missing_utxo_extracts_without_validation() {
+    let mut psbt = p2wpkh_psbt(&[true], NORMAL_INPUT_VALUE, NORMAL_OUTPUT_VALUE);
+    let finalized_tx = validated_tx(psbt.clone());
+    psbt.inputs[0].final_script_witness = Some(finalized_tx.input[0].witness.clone());
+    psbt.inputs[0].witness_utxo = None;
+
+    let finalized = finalize(psbt).expect("finalized PSBT extracts without UTXO data");
+    assert_eq!(
+        finalized,
+        FinalizedPsbt::Unchecked {
+            transaction: finalized_tx,
+            missing_utxo_inputs: 1,
+        }
+    );
+}
+
+#[test]
+fn malformed_provided_utxo_still_fails_when_another_utxo_is_missing() {
+    let mut psbt = p2wpkh_psbt(&[true, true], NORMAL_INPUT_VALUE, NORMAL_OUTPUT_VALUE);
+    let finalized_tx = validated_tx(psbt.clone());
+    for (input, tx_input) in psbt.inputs.iter_mut().zip(finalized_tx.input.iter()) {
+        input.final_script_witness = Some(tx_input.witness.clone());
+    }
+    psbt.inputs[0].witness_utxo = None;
+    psbt.inputs[1].non_witness_utxo = Some(Transaction {
+        version: Version::TWO,
+        lock_time: LockTime::ZERO,
+        input: vec![],
+        output: vec![
+            psbt.inputs[1]
+                .witness_utxo
+                .clone()
+                .expect("fixture has witness UTXO"),
+        ],
+    });
+
+    let err = finalize(psbt).expect_err("provided non-witness UTXO has the wrong txid");
+    assert!(matches!(
+        err,
+        FinalizeError::InvalidPsbt(PsbtValidationError::NonWitnessTxidMismatch { input: 1 })
+    ));
 }
 
 #[test]
@@ -151,18 +205,63 @@ fn missing_signature_on_one_of_two_inputs_reports_incomplete_count() {
     );
 
     let err = finalize(psbt).expect_err("one input has no signature");
-    assert_eq!(err.incomplete_inputs, 1);
+    match err {
+        FinalizeError::Miniscript(errors) => assert_eq!(errors.len(), 1),
+        FinalizeError::InvalidPsbt(error) => panic!("unexpected validation error: {error}"),
+    }
 }
 
 #[test]
-fn incomplete_signatures_error_displays_the_count() {
-    let err = IncompleteSignaturesError {
-        incomplete_inputs: 3,
+fn finalization_error_preserves_the_general_miniscript_cause() {
+    let psbt = p2wpkh_psbt(&[false], NORMAL_INPUT_VALUE, NORMAL_OUTPUT_VALUE);
+    let err = finalize(psbt).expect_err("input cannot be satisfied");
+    assert!(matches!(err, FinalizeError::Miniscript(_)));
+    assert!(!err.to_string().contains("missing signatures"));
+}
+
+#[test]
+fn malformed_non_witness_vout_is_rejected_before_finalization() {
+    let mut psbt = p2wpkh_psbt(&[true], NORMAL_INPUT_VALUE, NORMAL_OUTPUT_VALUE);
+    let previous_tx = Transaction {
+        version: Version::TWO,
+        lock_time: LockTime::ZERO,
+        input: vec![],
+        output: vec![
+            psbt.inputs[0]
+                .witness_utxo
+                .clone()
+                .expect("fixture has witness UTXO"),
+        ],
     };
-    assert_eq!(
-        err.to_string(),
-        "PSBT cannot be finalized: 3 input(s) missing signatures"
-    );
+    psbt.unsigned_tx.input[0].previous_output = OutPoint::new(previous_tx.compute_txid(), 1);
+    psbt.inputs[0].non_witness_utxo = Some(previous_tx);
+
+    let err = finalize(psbt).expect_err("vout is out of bounds");
+    assert!(matches!(
+        err,
+        FinalizeError::InvalidPsbt(PsbtValidationError::NonWitnessVoutOutOfBounds {
+            input: 0,
+            vout: 1,
+            outputs: 1,
+        })
+    ));
+}
+
+#[test]
+fn invalid_already_finalized_witness_fails_interpreter_validation() {
+    let psbt = p2wpkh_psbt(&[true], NORMAL_INPUT_VALUE, NORMAL_OUTPUT_VALUE);
+    let finalized_tx = validated_tx(psbt.clone());
+    let mut already_finalized = psbt;
+    already_finalized.inputs[0].partial_sigs.clear();
+    already_finalized.inputs[0].final_script_witness = Some(finalized_tx.input[0].witness.clone());
+    already_finalized.inputs[0]
+        .final_script_witness
+        .as_mut()
+        .expect("final witness was set")
+        .push(vec![0]);
+
+    let err = finalize(already_finalized).expect_err("extra witness item is invalid");
+    assert!(matches!(err, FinalizeError::Miniscript(_)));
 }
 
 #[test]
@@ -180,7 +279,7 @@ fn raw_transaction_txid_and_serialization_round_trip_unchanged() {
 #[test]
 fn extract_then_reparse_round_trips_to_the_same_txid() {
     let psbt = p2wpkh_psbt(&[true], NORMAL_INPUT_VALUE, NORMAL_OUTPUT_VALUE);
-    let tx = finalize(psbt).expect("complete PSBT finalizes");
+    let tx = validated_tx(psbt);
     let txid = tx.compute_txid();
 
     let raw = serialize(&tx);
@@ -196,23 +295,21 @@ fn high_fee_rate_psbt_extracts_successfully() {
     // the 25_000 sat/vB threshold `Psbt::extract_tx` refuses as absurd.
     // `finalize` must still extract it: nothing in this project gates on fee.
     let psbt = p2wpkh_psbt(&[true], Amount::from_sat(10_000_100), Amount::from_sat(100));
-    let tx = finalize(psbt).expect("high-fee PSBT still finalizes and extracts");
+    let tx = validated_tx(psbt);
     assert_eq!(tx.output[0].value, Amount::from_sat(100));
 }
 
 #[test]
 fn finalization_is_deterministic() {
-    let first = finalize(p2wpkh_psbt(
+    let first = validated_tx(p2wpkh_psbt(
         &[true],
         NORMAL_INPUT_VALUE,
         NORMAL_OUTPUT_VALUE,
-    ))
-    .expect("finalizes");
-    let second = finalize(p2wpkh_psbt(
+    ));
+    let second = validated_tx(p2wpkh_psbt(
         &[true],
         NORMAL_INPUT_VALUE,
         NORMAL_OUTPUT_VALUE,
-    ))
-    .expect("finalizes");
+    ));
     assert_eq!(first, second);
 }
