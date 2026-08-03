@@ -650,6 +650,15 @@ transitions are `.2s ease-in-out`. Each queue row's own send control uses
 the same three states at row scale (11px, `6px 12px` padding), bordered
 rather than bare text so it reads as something to press.
 
+A button whose label changes never resizes. Each one is an `inline-grid`
+with a single named area holding two children stacked in the same cell: a
+`visibility:hidden` sizer carrying the widest label that button can show,
+and the visible label on top. The main button reserves the wider of
+`Send batch (n)` and `Sending…` for its current count; a row reserves
+`Retry`. Reserving the width matters most at the moment of the click,
+when the label changes to `Sending…` and the control would otherwise
+shift out from under the pointer.
+
 Typography: IBM Plex Sans for prose/UI, IBM Plex Mono for all numbers,
 hashes, labels and chips — both bundled locally as woff2 via trunk assets,
 no external font CDN. (The mockup's bundle also carries Satoshi and

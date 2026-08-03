@@ -131,8 +131,11 @@ fn send_button(
             {onclick}
             disabled={broadcasting}
             style={send_button_style(broadcasting)}
-            class="primary-btn"
-        >{label}</button>
+            class="primary-btn btn-stable"
+        >
+            <span class="btn-sizer">{"Retry"}</span>
+            <span>{label}</span>
+        </button>
     }
 }
 

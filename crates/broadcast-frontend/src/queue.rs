@@ -633,6 +633,18 @@ pub fn stats(items: &[QueueItem], floor: f64) -> QueueStats {
 /// The main send button's label. "Send batch" with a count once more than
 /// one row is submittable, since each row can also be sent on its own.
 /// Never describes the fee rates, only the run's shape.
+/// The widest label this button can show for a given count, used to
+/// reserve its width so it does not resize when the run starts.
+pub fn widest_send_label(submittable: usize) -> String {
+    let at_rest = send_label(submittable, false);
+    let in_flight = send_label(submittable, true);
+    if in_flight.chars().count() > at_rest.chars().count() {
+        in_flight
+    } else {
+        at_rest
+    }
+}
+
 pub fn send_label(submittable: usize, in_flight: bool) -> String {
     if in_flight {
         "Sending…".to_string()
@@ -849,6 +861,19 @@ mod tests {
     #[test]
     fn short_name_strips_whitespace_before_measuring() {
         assert_eq!(short_name("12 34 56 78 90"), "1234567890");
+    }
+
+    #[test]
+    fn widest_send_label_covers_every_state_of_the_same_count() {
+        // Reserving this width is what stops the button resizing when a run
+        // starts, so it must be at least as wide as either state.
+        for submittable in [0, 1, 2, 9, 10, 999] {
+            let widest = widest_send_label(submittable).chars().count();
+            assert!(widest >= send_label(submittable, false).chars().count());
+            assert!(widest >= send_label(submittable, true).chars().count());
+        }
+        assert_eq!(widest_send_label(1), "Sending…");
+        assert_eq!(widest_send_label(4), "Send batch (4)");
     }
 
     #[test]

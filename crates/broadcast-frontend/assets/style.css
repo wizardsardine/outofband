@@ -36,4 +36,11 @@ button { transition: all .2s ease-in-out; }
 }
 .remove-btn:hover:not(:disabled) { color: #ef445f; }
 
+/* A button whose label changes must not resize under the pointer. The
+   hidden sizer holds the widest label the button can show; the visible
+   label is stacked on top of it in the same grid cell. */
+.btn-stable { display: inline-grid; grid-template-areas: "label"; align-items: center; justify-items: center; }
+.btn-stable > * { grid-area: label; }
+.btn-stable > .btn-sizer { visibility: hidden; pointer-events: none; }
+
 @keyframes wspulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }

@@ -30,6 +30,7 @@ pub fn stat_strip(props: &StatStripProps) -> Html {
         .count();
     let disabled = submittable == 0 || props.broadcasting;
     let label = queue::send_label(submittable, props.broadcasting);
+    let widest = queue::widest_send_label(submittable);
 
     let onclick = {
         let on_broadcast = props.on_broadcast.clone();
@@ -46,9 +47,12 @@ pub fn stat_strip(props: &StatStripProps) -> Html {
                 <button
                     {onclick}
                     {disabled}
-                    class={if disabled { "" } else { "primary-btn" }}
+                    class={if disabled { "btn-stable" } else { "primary-btn btn-stable" }}
                     style={broadcast_button_style(!disabled, props.mobile)}
-                >{label}</button>
+                >
+                    <span class="btn-sizer">{widest}</span>
+                    <span>{label}</span>
+                </button>
             </div>
         </div>
     }
