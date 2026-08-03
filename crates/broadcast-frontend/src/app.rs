@@ -43,14 +43,16 @@ pub fn app() -> Html {
                                 fee={fee.clone()}
                                 mobile={mobile}
                                 broadcasting={queue.broadcasting}
-                                on_broadcast={Callback::noop()}
+                                on_broadcast={queue.on_broadcast.clone()}
                             />
                             <QueueTable
                                 items={queue.items.clone()}
                                 fee={fee.clone()}
                                 mobile={mobile}
+                                broadcasting={queue.broadcasting}
                                 on_remove={queue.on_remove.clone()}
                                 on_set_total={queue.on_set_total.clone()}
+                                on_retry={queue.on_retry.clone()}
                             />
                         </div>
                     }

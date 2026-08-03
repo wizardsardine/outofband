@@ -10,8 +10,10 @@ pub struct QueueTableProps {
     pub items: Vec<QueueItem>,
     pub fee: Option<FeeSnapshot>,
     pub mobile: bool,
+    pub broadcasting: bool,
     pub on_remove: Callback<u64>,
     pub on_set_total: Callback<(u64, Option<u64>)>,
+    pub on_retry: Callback<u64>,
 }
 
 #[function_component(QueueTable)]
@@ -42,8 +44,10 @@ pub fn queue_table(props: &QueueTableProps) -> Html {
                     item={item.clone()}
                     floor={floor}
                     mobile={props.mobile}
+                    broadcasting={props.broadcasting}
                     on_remove={props.on_remove.clone()}
                     on_set_total={props.on_set_total.clone()}
+                    on_retry={props.on_retry.clone()}
                 />
             }) }
         </div>

@@ -67,9 +67,7 @@ pub enum QueueItemBody {
 }
 
 /// A queued item's submission outcome. Every item starts `Unsent`; the
-/// other variants are only ever reached by the broadcast loop, so row
-/// rendering already handles them even though nothing constructs them yet.
-#[allow(dead_code)]
+/// other variants are reached only by the broadcast loop.
 #[derive(Clone, PartialEq)]
 pub enum SubmissionState {
     Unsent,

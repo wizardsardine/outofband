@@ -51,6 +51,10 @@ pub const HEADLINE_GRADIENT_VIOLET: &str =
 pub const RESPONSIVE_BREAKPOINT_QUERY: &str = "(max-width: 860px)";
 pub const FEE_POLL_INTERVAL_MS: u32 = 30_000;
 
+/// Block explorer an accepted row's txid links to. Compiled in rather than
+/// configurable: the frontend has no other per-deploy configuration surface.
+pub const BLOCK_EXPLORER_TX_URL: &str = "https://mempool.space/tx/";
+
 /// Shared grid template for the queue table's header and rows.
 pub const QUEUE_ROW_COLUMNS: &str = "26px minmax(0,2.4fr) 110px 130px 150px 120px 30px";
 

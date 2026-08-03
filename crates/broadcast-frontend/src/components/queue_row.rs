@@ -3,8 +3,8 @@ use yew::prelude::*;
 
 use crate::queue::{self, NoteCard, QueueItem, QueueItemBody, RowStatusView, SubmissionState};
 use crate::tokens::{
-    ACCENT_TEAL_BRIGHT, BODY_COPY, BORDER_STRONG, CARD_NESTED, FIELD_TEXT, HAIRLINE,
-    QUEUE_ROW_COLUMNS, SURFACE_ACCEPTED, TEXT_DISABLED, TEXT_MUTED_6A, TEXT_PRIMARY,
+    ACCENT_TEAL_BRIGHT, BLOCK_EXPLORER_TX_URL, BODY_COPY, BORDER_STRONG, CARD_NESTED, FIELD_TEXT,
+    HAIRLINE, QUEUE_ROW_COLUMNS, SURFACE_ACCEPTED, TEXT_DISABLED, TEXT_MUTED_6A, TEXT_PRIMARY,
     TEXT_SECONDARY,
 };
 
@@ -13,8 +13,10 @@ pub struct QueueRowProps {
     pub item: QueueItem,
     pub floor: f64,
     pub mobile: bool,
+    pub broadcasting: bool,
     pub on_remove: Callback<u64>,
     pub on_set_total: Callback<(u64, Option<u64>)>,
+    pub on_retry: Callback<u64>,
 }
 
 #[function_component(QueueRow)]
@@ -38,6 +40,11 @@ pub fn queue_row(props: &QueueRowProps) -> Html {
         Callback::from(move |_| on_remove.emit(id))
     };
 
+    let retryable = matches!(
+        item.submission,
+        SubmissionState::Rejected(_) | SubmissionState::Failed(_)
+    );
+
     html! {
         <div style={row_style}>
             <div style={row_grid_style(props.mobile)}>
@@ -52,7 +59,12 @@ pub fn queue_row(props: &QueueRowProps) -> Html {
                     <div style={format!("font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;color:{}", queue::rate_color(item, props.floor))}>{rate_text(item)}</div>
                     <div style={format!("font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:{TEXT_MUTED_6A};margin-top:2px")}>{fee_sub_line(item)}</div>
                 </div>
-                <span style={format!("font-size:12px;font-weight:500;text-align:right;color:{}", status.text_color)}>{status.label}</span>
+                <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px">
+                    <span style={format!("font-size:12px;font-weight:500;color:{}", status.text_color)}>{status.label}</span>
+                    if retryable {
+                        { retry_button(item.id, props.broadcasting, &props.on_retry) }
+                    }
+                </div>
                 <button onclick={onclick_remove} style={remove_button_style()} class="remove-btn">{"×"}</button>
             </div>
 
@@ -90,6 +102,32 @@ fn name_cell_style(mobile: bool) -> &'static str {
 fn format_chip_style() -> String {
     format!(
         "font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.5px;color:{TEXT_SECONDARY};border:1px solid {BORDER_STRONG};border-radius:2px;padding:4px 8px;justify-self:start"
+    )
+}
+
+fn retry_button(id: u64, broadcasting: bool, on_retry: &Callback<u64>) -> Html {
+    let onclick = {
+        let on_retry = on_retry.clone();
+        Callback::from(move |_| on_retry.emit(id))
+    };
+    html! {
+        <button
+            {onclick}
+            disabled={broadcasting}
+            style={retry_button_style(broadcasting)}
+        >{"Retry"}</button>
+    }
+}
+
+fn retry_button_style(disabled: bool) -> String {
+    let color = if disabled {
+        TEXT_DISABLED
+    } else {
+        ACCENT_TEAL_BRIGHT
+    };
+    let cursor = if disabled { "not-allowed" } else { "pointer" };
+    format!(
+        "border:0;background:none;font-family:inherit;font-size:11px;font-weight:500;letter-spacing:.4px;text-transform:uppercase;color:{color};cursor:{cursor};padding:0"
     )
 }
 
@@ -185,15 +223,30 @@ fn txid_line(item: &QueueItem) -> Html {
     let QueueItemBody::Decoded { txid, .. } = &item.body else {
         return html! {};
     };
-    let color = if matches!(item.submission, SubmissionState::Accepted) {
+    let accepted = matches!(item.submission, SubmissionState::Accepted);
+    let color = if accepted {
         ACCENT_TEAL_BRIGHT
     } else {
         TEXT_MUTED_6A
     };
+    // An unbroadcast (or not-yet-successful) transaction is not there to
+    // look up, so only an accepted row links out to the explorer.
+    let txid_display = if accepted {
+        html! {
+            <a
+                href={format!("{BLOCK_EXPLORER_TX_URL}{txid}")}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={format!("color:{color};text-decoration:none")}
+            >{txid.clone()}</a>
+        }
+    } else {
+        html! { <span>{txid.clone()}</span> }
+    };
     html! {
         <div style={format!("display:flex;align-items:center;gap:12px;margin:14px 0 0 42px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:{color};word-break:break-all")}>
             <span style={format!("color:{TEXT_MUTED_6A};letter-spacing:.6px")}>{"TXID"}</span>
-            <span style="user-select:all">{txid.clone()}</span>
+            <span style="user-select:all">{txid_display}</span>
             { copy_button(txid.clone()) }
         </div>
     }
