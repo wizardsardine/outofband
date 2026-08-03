@@ -1,0 +1,17 @@
+[slipstream]
+base_url = "https://slipstream.mara.com"
+fee_endpoint = "/api/rates"             # -> effective_rate, no credential
+submit_endpoint = "/api/transactions"   # -> {status, message}
+client_code = ""                        # secret — root:outofband, mode 640
+                                        # required to submit; rates work without
+request_timeout_secs = 30
+
+[broadcast_api]
+listen_addr = "127.0.0.1:3010"
+fee_poll_secs = 60
+rate_limit_window_secs = 600
+rate_limit_max_tx = 100
+max_payload_bytes = 1048576          # 1 MiB; raise to 8388608 (8 MiB) if
+                                     # full-block non-standard txs are expected.
+                                     # Keep == the nginx client_max_body_size
+                                     # (both templated from one install variable).

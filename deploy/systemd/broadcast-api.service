@@ -1,0 +1,21 @@
+[Unit]
+Description=Outofband broadcast API (MARA Slipstream relay)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=outofband
+Group=outofband
+WorkingDirectory=/opt/outofband
+ExecStart=/usr/local/bin/broadcast-api /etc/outofband/config.toml
+Restart=always
+RestartSec=10s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/etc/outofband
+
+[Install]
+WantedBy=multi-user.target
