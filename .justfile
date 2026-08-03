@@ -15,8 +15,9 @@ test:
 run:
     #!/usr/bin/env bash
     set -euo pipefail
-    [ -f dev-config.toml ] || { cp deploy/config.toml dev-config.toml; \
-        echo "created dev-config.toml — fill client_code to broadcast"; }
+    [ -f dev-config.toml ] || { install -m 600 deploy/config.toml dev-config.toml; \
+        echo "created dev-config.toml; fill client_code to broadcast"; }
+    chmod 600 dev-config.toml
     cargo run -p broadcast-api -- dev-config.toml &
     trap 'kill %1 2>/dev/null || true' EXIT
     cd crates/broadcast-frontend && trunk serve --open
