@@ -702,6 +702,13 @@ animation for in-flight rows (`@keyframes wspulse`, opacity `.35`→`1`,
 `(max-width: 860px)`, matched with `window.matchMedia` and held in state —
 every layout below has exactly two forms, desktop and mobile.
 
+**No em dashes in user-visible copy.** Anywhere one would fall, use a
+colon, a comma or a full stop instead. This holds for status text built at
+runtime as well as static strings, and applies to the page only: prose in
+this document and in code comments is unaffected. The one surviving `—` on
+the page is the fee card's placeholder for a rate it does not have yet,
+where it is a glyph standing in for a number rather than punctuation.
+
 ### Page structure (top to bottom)
 
 Disclosure strip: a sticky bar at the very top (`position:sticky; top:0;
@@ -721,7 +728,7 @@ outrank it.
 Context banner: directly below, a bordered card (`#0c0c0c`, `#2a2a2a`
 border, 3px `#5fe7e4` left edge, `18px 26px` padding) scoping who the tool
 is for, capped at `96ch`: "This tool is important for some types of users
-only — mainly Liana, Miniscript, or some types of multisig wallets", the
+only: mainly Liana, Miniscript, or some types of multisig wallets", the
 three wallet names in `#f4f4f4`/600. Under that, set apart in `#e0b341`
 beside a warning triangle rather than running on from the first sentence:
 "This tool is NOT recommended for wallets critically at risk, as described
@@ -751,11 +758,13 @@ sentence "Anything below this rate is not expected to be mined. Clearing
 it is not a guarantee either." Below that a warn
 note card (`#100d06`, `#3d3520` border, 3px `#e0b341` left edge) carries
 the guidance the number alone cannot (departure 10): the floor is
-**dynamic** — it moves with demand and is re-read every 30 s — so build at
+**dynamic**, it moves with demand, so build at
 a rate **significantly higher** than it, or the transaction may stop
-clearing before it is mined. The interval in that sentence is interpolated
-from `FEE_POLL_INTERVAL_MS` rather than written out, so the copy cannot
-drift from the poll. The number comes
+clearing before it is mined. The poll interval is deliberately not stated
+in that sentence: how often the page re-reads the number is its own
+business, and a user who has to think about 30-second windows is being
+given a mechanism where the instruction is simply to leave margin. The
+number comes
 from `GET /api/rates`, polled with `gloo-timers` every 30 s. A failed poll
 keeps the last known rate rather than wiping it, and marks it stale: the
 card then dims and adds "This rate may be out of date." A rate that is not
@@ -763,12 +772,13 @@ a usable positive number counts as a failed poll, since rendering
 0 sat/vB as live would put every queued transaction above the floor.
 
 Once the queue holds anything, the stat strip and queue table are rendered
-**above** the load section rather than below it, departing from the
-mockup's order. The mockup only ever showed an empty-then-filled page read
-top to bottom; in use, a user who has already loaded transactions comes
-back to act on the queue, and a 214px textarea between the hero and the
-rows buries exactly what they returned for. The load section keeps its
-place when the queue is empty.
+directly **below** the load section, as in the mockup. They are part of
+loading rather than a section of their own: what goes into the box appears
+here, and the broadcast control belongs with the rows it acts on. An
+earlier revision floated them above the load section, on the theory that a
+returning user comes back to act on the queue and a 214px textarea between
+the hero and the rows buries it; in practice that split the one action
+across two places on the page and put a result above its own cause.
 
 Prepare your transaction: a step the mockup does not have (departure 12),
 directly above the load section and below the queue when there is one — it

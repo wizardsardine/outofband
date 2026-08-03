@@ -515,10 +515,10 @@ async fn count_down_and_wait(items: &UseReducerHandle<QueueState>, id: u64, dela
     let mut remaining = delay_secs;
     loop {
         let text = if remaining == 0 {
-            "Rate limited — retrying now…".to_string()
+            "Rate limited, retrying now…".to_string()
         } else {
             format!(
-                "Rate limited — retrying in {remaining} second{}…",
+                "Rate limited, retrying in {remaining} second{}…",
                 if remaining == 1 { "" } else { "s" }
             )
         };

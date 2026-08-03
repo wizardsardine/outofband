@@ -21,9 +21,21 @@ pub fn app() -> Html {
                 <div style="max-width:1280px;margin:0 auto">
                     <ContextBanner />
                     <Hero mobile={mobile} fee={fee.clone()} />
-                    // Above the paste box once it has rows: the queue is what
-                    // the user came back to act on, and pushing it below a
-                    // tall textarea buries it.
+                    <PrepareStep />
+                    <PasteBox
+                        raw_text={queue.raw_text.clone()}
+                        on_raw_text={queue.on_raw_text.clone()}
+                        has_items={has_items}
+                        parse_error={queue.parse_error.clone()}
+                        on_submit={queue.on_submit.clone()}
+                        on_clear={queue.on_clear.clone()}
+                        broadcasting={queue.broadcasting}
+                        on_files={on_files}
+                    />
+                    // Part of loading, so it reads as the result of the step
+                    // above it rather than as a separate section: what you
+                    // put in the box appears here, and the broadcast control
+                    // sits with the rows it acts on.
                     if has_items {
                         <div style="padding:44px 0 0">
                             <StatStrip
@@ -44,21 +56,6 @@ pub fn app() -> Html {
                             />
                         </div>
                     }
-                    // Directly above the paste box rather than above the
-                    // queue: it explains how to get a file for the step that
-                    // follows it, and with rows on screen the queue still
-                    // wants the top of the page.
-                    <PrepareStep />
-                    <PasteBox
-                        raw_text={queue.raw_text.clone()}
-                        on_raw_text={queue.on_raw_text.clone()}
-                        has_items={has_items}
-                        parse_error={queue.parse_error.clone()}
-                        on_submit={queue.on_submit.clone()}
-                        on_clear={queue.on_clear.clone()}
-                        broadcasting={queue.broadcasting}
-                        on_files={on_files}
-                    />
                     if !queue.refused_psbts.is_empty() {
                         <FinalizationModal
                             refused={queue.refused_psbts.clone()}

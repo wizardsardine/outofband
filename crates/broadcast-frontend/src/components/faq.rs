@@ -128,7 +128,7 @@ fn entries() -> Vec<(&'static str, Html)> {
             "Can a second transaction pay the fee for a low-fee one (CPFP)?",
             html! {
                 {"No. Slipstream looks at every transaction on its own, so one that does not pay \
-                  enough will not get mined here — even if you send another one paying extra to \
+                  enough will not get mined here, even if you send another one paying extra to \
                   cover it. You can still send several related transactions, as long as each pays \
                   enough by itself: name the files 01, 02, 03 and they go out in that order. If you \
                   need one transaction to pay for another, contact MARA directly."}

@@ -2,8 +2,8 @@ use yew::prelude::*;
 
 use crate::hooks::fee::FeeSnapshot;
 use crate::tokens::{
-    BORDER_STRONG, FEE_NUMBER_GRADIENT, FEE_POLL_INTERVAL_MS, NOTE_CARD_WARN, PROSE, PROSE_SIZE,
-    RULE, TEXT_MUTED_7B, TEXT_SECONDARY, WARNING,
+    BORDER_STRONG, FEE_NUMBER_GRADIENT, NOTE_CARD_WARN, PROSE, PROSE_SIZE, RULE, TEXT_MUTED_7B,
+    TEXT_SECONDARY, WARNING,
 };
 
 #[derive(Properties, PartialEq)]
@@ -39,7 +39,6 @@ pub fn fee_card(props: &FeeCardProps) -> Html {
     let advice_text_style =
         format!("margin:0;font-size:14px;line-height:1.6;color:{note_text};text-wrap:pretty");
     let advice_emphasis_style = format!("color:{WARNING};font-weight:600");
-    let refresh_seconds = FEE_POLL_INTERVAL_MS / 1_000;
 
     html! {
         <div style={card_style}>
@@ -70,7 +69,7 @@ pub fn fee_card(props: &FeeCardProps) -> Html {
                 <p style={advice_text_style}>
                     {"This floor is "}
                     <strong style={advice_emphasis_style.clone()}>{"dynamic"}</strong>
-                    {format!(" — it moves with demand, and this number is re-read every {refresh_seconds} seconds. Build your transaction at a rate ")}
+                    {". It moves with demand, so build your transaction at a rate "}
                     <strong style={advice_emphasis_style}>{"significantly higher"}</strong>
                     {" than the floor, or it may stop clearing before it is mined."}
                 </p>

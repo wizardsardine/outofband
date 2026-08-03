@@ -24,7 +24,7 @@ pub fn context_banner() -> Html {
     html! {
         <div style={style}>
             <p style={text_style}>
-                {"This tool is important for some types of users only — mainly "}
+                {"This tool is important for some types of users only: mainly "}
                 <strong style={emphasis_style.clone()}>{"Liana"}</strong>
                 {", "}
                 <strong style={emphasis_style.clone()}>{"Miniscript"}</strong>
