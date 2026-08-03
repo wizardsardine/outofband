@@ -82,8 +82,7 @@ else
     [ -n "$EXISTING_NAME" ] && SERVER_NAME="$EXISTING_NAME"
   fi
   log_info "installing nginx site conf to $NGINX_SITE"
-  sed -e "s/client_max_body_size 2m;/client_max_body_size ${NGINX_CLIENT_MAX_BODY};/" \
-      -e "s/server_name outofband.example.com;/server_name ${SERVER_NAME};/" \
+  sed -e "s/server_name outofband.example.com;/server_name ${SERVER_NAME};/" \
       "$PROJECT_ROOT/deploy/nginx/outofband.conf" | sudo tee "$NGINX_SITE" >/dev/null
 fi
 
