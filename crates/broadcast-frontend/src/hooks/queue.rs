@@ -372,6 +372,10 @@ enum RunOutcome {
 /// or a 429 that outlasts the retries, pauses the whole run so it never
 /// silently skips an item.
 ///
+/// Submission order is guaranteed by that sequential awaited loop: the next
+/// id is only sent once the previous one has fully returned, so a parent
+/// always reaches Slipstream before a child spending it.
+///
 /// Every submission-state update goes through `items.dispatch`, which Yew
 /// applies against whatever the queue's live state is at that moment —
 /// never a snapshot this run captured earlier — so an add or edit
