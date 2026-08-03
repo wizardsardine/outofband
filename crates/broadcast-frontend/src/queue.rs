@@ -272,6 +272,15 @@ fn row_format_for(format: Format) -> RowFormat {
 }
 
 fn from_transaction(id: u64, name: String, origin: String, tx: Transaction) -> QueueItem {
+    if let Err(err) = tx_core::check_structure(&tx) {
+        return QueueItem::invalid(
+            id,
+            name,
+            origin,
+            RowFormat::RawTx,
+            capitalize(&err.to_string()),
+        );
+    }
     let tx_hex = tx_core::serialize_hex(&tx);
     if let Some(message) = payload_cap_error(&tx_hex) {
         return QueueItem::invalid(id, name, origin, RowFormat::RawTx, message);
@@ -373,6 +382,15 @@ fn from_psbt(id: u64, name: String, origin: String, psbt: Psbt) -> AnalyzeOutcom
                     }),
                 ),
             };
+            if let Err(err) = tx_core::check_structure(&tx) {
+                return AnalyzeOutcome::Queued(Box::new(QueueItem::invalid(
+                    id,
+                    name,
+                    origin,
+                    RowFormat::Psbt,
+                    capitalize(&err.to_string()),
+                )));
+            }
             let tx_hex = tx_core::serialize_hex(&tx);
             if let Some(message) = payload_cap_error(&tx_hex) {
                 return AnalyzeOutcome::Queued(Box::new(QueueItem::invalid(
@@ -690,13 +708,31 @@ mod tests {
         assert!(matches!(item.format, RowFormat::Unknown));
     }
 
+    #[test]
+    fn analyze_raw_tx_without_outputs_is_invalid() {
+        let Ok(Decoded::Transaction(mut tx)) = tx_core::decode(TX_HEX.as_bytes()) else {
+            panic!("fixture is a raw transaction");
+        };
+        tx.output.clear();
+
+        let item = analyze_queued(1, "name", "origin", &tx_core::serialize_hex(&tx));
+        assert!(item.is_invalid());
+        assert!(matches!(item.format, RowFormat::RawTx));
+        assert_eq!(
+            item.note.expect("an invalid row states its reason").text,
+            "Transaction has no outputs"
+        );
+    }
+
     /// A one-input PSBT with no witness/redeem data at all can never be
     /// finalized, so `from_psbt` must refuse it via `UnfinalizablePsbt`
     /// rather than queueing it as an `Invalid` row.
     fn unsigned_psbt() -> Psbt {
         use bitcoin::absolute::LockTime;
         use bitcoin::transaction::Version;
-        use bitcoin::{OutPoint, ScriptBuf, Sequence, TxIn, Txid, Witness, hashes::Hash};
+        use bitcoin::{
+            Amount, OutPoint, ScriptBuf, Sequence, TxIn, TxOut, Txid, Witness, hashes::Hash,
+        };
 
         let tx = Transaction {
             version: Version::TWO,
@@ -707,7 +743,10 @@ mod tests {
                 sequence: Sequence::MAX,
                 witness: Witness::new(),
             }],
-            output: vec![],
+            output: vec![TxOut {
+                value: Amount::from_sat(100_000),
+                script_pubkey: ScriptBuf::new(),
+            }],
         };
         Psbt::from_unsigned_tx(tx).expect("well-formed unsigned tx")
     }
@@ -755,6 +794,22 @@ mod tests {
         };
         item.total_input_override = Some(output_sum_sats + 1_000);
         assert_eq!(effective_fee(&item), Some(1_000));
+    }
+
+    #[test]
+    fn finalized_psbt_without_outputs_is_invalid() {
+        let mut psbt = unsigned_psbt();
+        psbt.inputs[0].final_script_witness = Some(bitcoin::Witness::from_slice(&[vec![1]]));
+        psbt.unsigned_tx.output.clear();
+        psbt.outputs.clear();
+
+        let item = analyze_queued(1, "empty.psbt", "pasted", &psbt.to_string());
+        assert!(item.is_invalid());
+        assert!(matches!(item.format, RowFormat::Psbt));
+        assert_eq!(
+            item.note.expect("an invalid row states its reason").text,
+            "Transaction has no outputs"
+        );
     }
 
     #[test]
