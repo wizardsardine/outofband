@@ -95,9 +95,17 @@ fi
 log_info "adding wasm32-unknown-unknown target"
 (cd "$PROJECT_ROOT" && rustup target add wasm32-unknown-unknown)
 
+# Pinned and --locked: a bare `cargo install trunk` re-resolves every
+# transitive dependency, and a semver-compatible cssparser release breaks
+# lightningcss, so an unpinned install fails on a box that resolves it
+# today even though the same command worked last month.
+TRUNK_VERSION="0.21.14"
 if ! command -v trunk >/dev/null 2>&1; then
-  log_info "installing trunk"
-  cargo install trunk
+  log_info "installing trunk $TRUNK_VERSION"
+  cargo install --locked "trunk@$TRUNK_VERSION"
+elif [ "$(trunk --version | awk '{print $2}')" != "$TRUNK_VERSION" ]; then
+  log_info "updating trunk to $TRUNK_VERSION"
+  cargo install --locked --force "trunk@$TRUNK_VERSION"
 fi
 
 log_info "creating directories"

@@ -46,7 +46,8 @@ against a remote host with `user@host` (rsyncs the project to
   bootstrap of a fresh Debian/Ubuntu host: installs apt prerequisites
   (`build-essential`, `pkg-config`, `curl`, `rsync`, `nginx`, `certbot`,
   `python3-certbot-nginx`), rustup + the `wasm32-unknown-unknown` target +
-  `trunk` if missing, creates `/opt/outofband` and `/var/www/outofband`,
+  a pinned `trunk` if missing or out of date, creates `/opt/outofband` and
+  `/var/www/outofband`,
   builds the frontend with `trunk build --release`, installs its `dist/`
   to `/var/www/outofband`, installs the nginx site and its snippets, then
   runs a health check against `http://127.0.0.1/` through nginx.

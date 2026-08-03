@@ -1038,7 +1038,11 @@ Idempotent bootstrap of a fresh Debian/Ubuntu server, in order:
 1. `apt-get install` prerequisites: `build-essential`, `pkg-config`,
    `curl`, `rsync`, `nginx`, `certbot`, `python3-certbot-nginx`.
 2. Toolchain if missing: rustup at the pinned version, the
-   `wasm32-unknown-unknown` target, and `trunk` (via `cargo install`).
+   `wasm32-unknown-unknown` target, and a pinned `trunk` installed with
+   `cargo install --locked trunk@<version>`. Both parts matter: unpinned,
+   a bare `cargo install trunk` re-resolves every transitive dependency at
+   install time, and a semver-compatible `cssparser` release breaks
+   `lightningcss`, so the same command that worked last month fails today.
 3. Directories: `/opt/outofband` and `/var/www/outofband`.
 4. Build: `trunk build --release` in `crates/broadcast-frontend`.
 5. Install artifacts: the trunk `dist/` contents to `/var/www/outofband/`,
