@@ -44,7 +44,7 @@ against a remote host with `user@host` (rsyncs the project to
 
 - `just local` / `just deploy <user@host>` runs `deploy/install.sh`. Full
   bootstrap of a fresh Debian/Ubuntu host: installs apt prerequisites
-  (`build-essential`, `pkg-config`, `curl`, `rsync`, `nginx`, `certbot`,
+  (`build-essential`, `clang`, `pkg-config`, `curl`, `rsync`, `nginx`, `certbot`,
   `python3-certbot-nginx`), rustup + the `wasm32-unknown-unknown` target +
   a pinned `trunk` if missing or out of date, creates `/opt/outofband` and
   `/var/www/outofband`,

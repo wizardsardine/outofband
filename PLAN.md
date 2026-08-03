@@ -575,7 +575,7 @@ What is actually true, and what the README should say: this workspace
 contains no C or C++ source of its own; nothing links a *system* C
 library; the archive stack (`tar`, `flate2`/miniz_oxide, `zip`) is pure
 Rust; and the only toolchain requirement beyond rustc is a working `cc`,
-which `build-essential` provides. A literally C-free dependency graph is
+which `build-essential` and `clang` provide. A literally C-free dependency graph is
 not achievable for a project that validates Bitcoin signatures, and
 claiming one would be a lie. Supported archive formats are exactly tar,
 tar.gz/tgz, and zip. The IBM Plex Sans and IBM Plex Mono woff2 files ship
@@ -1035,8 +1035,12 @@ privileged steps only.
 
 Idempotent bootstrap of a fresh Debian/Ubuntu server, in order:
 
-1. `apt-get install` prerequisites: `build-essential`, `pkg-config`,
-   `curl`, `rsync`, `nginx`, `certbot`, `python3-certbot-nginx`.
+1. `apt-get install` prerequisites: `build-essential`, **`clang`**,
+   `pkg-config`, `curl`, `rsync`, `nginx`, `certbot`,
+   `python3-certbot-nginx`. `clang` is required, not a nicety: `bitcoin`
+   pulls `secp256k1-sys`, which compiles libsecp256k1 from C, and cc-rs
+   targets `wasm32-unknown-unknown` with clang only. gcc cannot, so
+   without it the frontend build fails in the wasm step.
 2. Toolchain if missing: rustup at the pinned version, the
    `wasm32-unknown-unknown` target, and a pinned `trunk` installed with
    `cargo install --locked trunk@<version>`. Both parts matter: unpinned,

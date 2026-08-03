@@ -82,7 +82,10 @@ export DEBIAN_FRONTEND=noninteractive
 
 log_info "installing apt prerequisites"
 sudo apt-get update
-sudo apt-get install -y build-essential pkg-config curl rsync nginx certbot python3-certbot-nginx
+# clang is not optional: `bitcoin` pulls `secp256k1-sys`, which compiles
+# libsecp256k1 from C, and cc-rs targets wasm32 with clang only. gcc from
+# build-essential cannot, so the frontend build dies in the wasm step.
+sudo apt-get install -y build-essential clang pkg-config curl rsync nginx certbot python3-certbot-nginx
 
 [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
 
