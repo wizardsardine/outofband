@@ -42,11 +42,13 @@ pub enum ConfigError {
     },
     Parse {
         path: String,
-        source: toml::de::Error,
     },
     InvalidListenAddr {
         value: String,
         source: AddrParseError,
+    },
+    InvalidValue {
+        key: &'static str,
     },
 }
 
@@ -56,12 +58,11 @@ impl fmt::Display for ConfigError {
             ConfigError::Read { path, source } => {
                 write!(f, "could not read config file {path}: {source}")
             }
-            ConfigError::Parse { path, source } => {
-                write!(f, "could not parse config file {path}: {source}")
-            }
+            ConfigError::Parse { path } => write!(f, "could not parse config file {path}"),
             ConfigError::InvalidListenAddr { value, source } => {
                 write!(f, "invalid broadcast_api.listen_addr {value:?}: {source}")
             }
+            ConfigError::InvalidValue { key } => write!(f, "{key} must be greater than zero"),
         }
     }
 }
@@ -228,6 +229,19 @@ submit_endpoint = "/api/transactions"
     fn rejects_invalid_toml() {
         let err = parse_config("not valid toml {{{", "test.toml").unwrap_err();
         assert!(matches!(err, ConfigError::Parse { .. }));
+    }
+
+    #[test]
+    fn parse_error_does_not_include_config_contents() {
+        let secret = "DISTINCTIVE_SECRET_VALUE";
+        let err = parse_config(
+            &format!("[slipstream]\nrequest_timeout_secs = \"{secret}\""),
+            "secret.toml",
+        )
+        .expect_err("secret in a numeric field must fail parsing");
+
+        assert!(!err.to_string().contains(secret));
+        assert!(!format!("{err:?}").contains(secret));
     }
 
     #[test]
