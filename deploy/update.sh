@@ -13,11 +13,6 @@ die() { log_error "$*"; exit 1; }
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Maximum transaction-hex length. nginx also allows JSON framing overhead.
-MAX_PAYLOAD_BYTES=1048576
-NGINX_JSON_OVERHEAD_BYTES=13
-NGINX_CLIENT_MAX_BODY="$(( (MAX_PAYLOAD_BYTES + NGINX_JSON_OVERHEAD_BYTES + 1048575) / 1048576 ))m"
-
 REMOTE="${1:-}"
 [ $# -le 1 ] || die "unexpected argument: $2"
 
@@ -33,7 +28,6 @@ if [ -n "$REMOTE" ]; then
     --exclude '/.git/' \
     --exclude '/.claude/' \
     --exclude '/.cm/' \
-    --exclude '/dev-config.toml' \
     --exclude 'dist/' \
     --exclude 'target/' \
     -- "$PROJECT_ROOT"/ "$REMOTE":/opt/outofband/src/
@@ -53,21 +47,10 @@ log_info "building broadcast-frontend"
 log_info "installing frontend assets"
 sudo rsync -a --delete "$PROJECT_ROOT/crates/broadcast-frontend/dist/" /var/www/outofband/
 
-# the frontend talks to Slipstream directly, so the relay service is no longer deployed
-if sudo systemctl disable --now broadcast-api 2>/dev/null; then
-  log_info "stopped and disabled broadcast-api"
-else
-  log_info "broadcast-api service not found, nothing to stop"
-fi
-sudo rm -f /etc/systemd/system/broadcast-api.service /usr/local/bin/broadcast-api
-sudo systemctl daemon-reload
-
 log_info "installing nginx snippets"
-sudo cp "$PROJECT_ROOT/deploy/nginx/outofband-zone.conf" /etc/nginx/conf.d/outofband-zone.conf
 sudo mkdir -p /etc/nginx/snippets
 sudo cp "$PROJECT_ROOT/deploy/nginx/outofband-security-headers.conf" /etc/nginx/snippets/outofband-security-headers.conf
-sed "s/client_max_body_size 2m;/client_max_body_size ${NGINX_CLIENT_MAX_BODY};/" \
-  "$PROJECT_ROOT/deploy/nginx/outofband-app.conf" | sudo tee /etc/nginx/snippets/outofband-app.conf >/dev/null
+sudo cp "$PROJECT_ROOT/deploy/nginx/outofband-app.conf" /etc/nginx/snippets/outofband-app.conf
 
 NGINX_SITE=/etc/nginx/sites-available/outofband.conf
 if [ -f "$NGINX_SITE" ] && sudo grep -qF 'include /etc/nginx/snippets/outofband-app.conf;' "$NGINX_SITE"; then

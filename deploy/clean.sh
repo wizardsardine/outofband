@@ -28,13 +28,12 @@ if [ -n "$REMOTE" ]; then
     --exclude '/.git/' \
     --exclude '/.claude/' \
     --exclude '/.cm/' \
-    --exclude '/dev-config.toml' \
     --exclude 'dist/' \
     --exclude 'target/' \
     -- "$PROJECT_ROOT"/ "$REMOTE":/opt/outofband/src/
 
   log_info "running clean.sh on $REMOTE"
-  # -t allocates a pty so the /etc/outofband confirmation prompt below works interactively
+  # -t allocates a pty so the system user confirmation prompt below works interactively
   ssh -t -- "$REMOTE" /opt/outofband/src/deploy/clean.sh
 
   log_info "remote clean complete"
@@ -50,8 +49,7 @@ sudo rm -f /etc/systemd/system/broadcast-api.service
 sudo systemctl daemon-reload
 
 sudo rm -f /etc/nginx/sites-enabled/outofband.conf /etc/nginx/sites-available/outofband.conf \
-  /etc/nginx/conf.d/outofband-zone.conf /etc/nginx/snippets/outofband-app.conf \
-  /etc/nginx/snippets/outofband-security-headers.conf
+  /etc/nginx/snippets/outofband-app.conf /etc/nginx/snippets/outofband-security-headers.conf
 if command -v nginx >/dev/null 2>&1; then
   if sudo nginx -t; then
     sudo systemctl reload nginx
@@ -61,17 +59,7 @@ if command -v nginx >/dev/null 2>&1; then
 fi
 
 sudo rm -f /usr/local/bin/broadcast-api
-sudo rm -rf /var/www/outofband /opt/outofband
-
-log_warn "/etc/outofband holds the Slipstream client code and is not removed automatically."
-CONFIRM=""
-read -r -p "Type 'yes' to also remove /etc/outofband: " CONFIRM || true
-if [ "$CONFIRM" = "yes" ]; then
-  sudo rm -rf /etc/outofband
-  log_info "removed /etc/outofband"
-else
-  log_warn "/etc/outofband left in place"
-fi
+sudo rm -rf /var/www/outofband /opt/outofband /etc/outofband
 
 if id outofband >/dev/null 2>&1; then
   CONFIRM=""

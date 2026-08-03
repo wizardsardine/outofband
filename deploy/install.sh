@@ -13,11 +13,6 @@ die() { log_error "$*"; exit 1; }
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Maximum transaction-hex length. nginx also allows JSON framing overhead.
-MAX_PAYLOAD_BYTES=1048576
-NGINX_JSON_OVERHEAD_BYTES=13
-NGINX_CLIENT_MAX_BODY="$(( (MAX_PAYLOAD_BYTES + NGINX_JSON_OVERHEAD_BYTES + 1048575) / 1048576 ))m"
-
 DOMAIN=""
 EMAIL=""
 REMOTE=""
@@ -64,7 +59,6 @@ if [ -n "$REMOTE" ]; then
     --exclude '/.git/' \
     --exclude '/.claude/' \
     --exclude '/.cm/' \
-    --exclude '/dev-config.toml' \
     --exclude 'dist/' \
     --exclude 'target/' \
     -- "$PROJECT_ROOT"/ "$REMOTE":/opt/outofband/src/
@@ -102,9 +96,8 @@ if ! command -v trunk >/dev/null 2>&1; then
   cargo install trunk
 fi
 
-log_info "creating system user and directories"
-id outofband >/dev/null 2>&1 || sudo useradd --system --no-create-home --shell /usr/sbin/nologin outofband
-sudo mkdir -p /etc/outofband /opt/outofband /var/www/outofband
+log_info "creating directories"
+sudo mkdir -p /opt/outofband /var/www/outofband
 
 log_info "building broadcast-frontend"
 (cd "$PROJECT_ROOT/crates/broadcast-frontend" && trunk build --release)
@@ -112,31 +105,10 @@ log_info "building broadcast-frontend"
 log_info "installing artifacts"
 sudo rsync -a --delete "$PROJECT_ROOT/crates/broadcast-frontend/dist/" /var/www/outofband/
 
-if [ ! -f /etc/outofband/config.toml ]; then
-  log_info "installing default config to /etc/outofband/config.toml"
-  sed "s/^max_payload_bytes = [0-9]*/max_payload_bytes = ${MAX_PAYLOAD_BYTES}/" \
-    "$PROJECT_ROOT/deploy/config.toml" | sudo tee /etc/outofband/config.toml >/dev/null
-  sudo chown root:outofband /etc/outofband/config.toml
-  sudo chmod 640 /etc/outofband/config.toml
-else
-  log_info "config already exists at /etc/outofband/config.toml, leaving it untouched"
-fi
-
-# the frontend talks to Slipstream directly, so the relay service is no longer deployed
-if sudo systemctl disable --now broadcast-api 2>/dev/null; then
-  log_info "stopped and disabled broadcast-api"
-else
-  log_info "broadcast-api service not found, nothing to stop"
-fi
-sudo rm -f /etc/systemd/system/broadcast-api.service /usr/local/bin/broadcast-api
-sudo systemctl daemon-reload
-
 log_info "installing nginx snippets"
-sudo cp "$PROJECT_ROOT/deploy/nginx/outofband-zone.conf" /etc/nginx/conf.d/outofband-zone.conf
 sudo mkdir -p /etc/nginx/snippets
 sudo cp "$PROJECT_ROOT/deploy/nginx/outofband-security-headers.conf" /etc/nginx/snippets/outofband-security-headers.conf
-sed "s/client_max_body_size 2m;/client_max_body_size ${NGINX_CLIENT_MAX_BODY};/" \
-  "$PROJECT_ROOT/deploy/nginx/outofband-app.conf" | sudo tee /etc/nginx/snippets/outofband-app.conf >/dev/null
+sudo cp "$PROJECT_ROOT/deploy/nginx/outofband-app.conf" /etc/nginx/snippets/outofband-app.conf
 
 if [ ! -f /etc/nginx/sites-available/outofband.conf ]; then
   log_info "installing nginx site to /etc/nginx/sites-available/outofband.conf"
