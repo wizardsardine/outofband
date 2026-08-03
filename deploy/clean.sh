@@ -21,14 +21,21 @@ if [ -n "$REMOTE" ]; then
   [ "$REMOTE_USER" != "$REMOTE" ] || die "expected user@host, got: $REMOTE"
 
   log_info "preparing $REMOTE"
-  ssh "$REMOTE" "sudo mkdir -p /opt/outofband/src && sudo chown ${REMOTE_USER}:${REMOTE_USER} /opt/outofband/src"
+  ssh -- "$REMOTE" 'sudo mkdir -p /opt/outofband/src && sudo chown "$(id -un):$(id -gn)" /opt/outofband/src'
 
   log_info "syncing source to $REMOTE:/opt/outofband/src"
-  rsync -az --delete --exclude target/ --exclude .git/ "$PROJECT_ROOT"/ "$REMOTE":/opt/outofband/src/
+  rsync -az --delete --protect-args \
+    --exclude '/.git/' \
+    --exclude '/.claude/' \
+    --exclude '/.cm/' \
+    --exclude '/dev-config.toml' \
+    --exclude 'dist/' \
+    --exclude 'target/' \
+    -- "$PROJECT_ROOT"/ "$REMOTE":/opt/outofband/src/
 
   log_info "running clean.sh on $REMOTE"
   # -t allocates a pty so the /etc/outofband confirmation prompt below works interactively
-  ssh -t "$REMOTE" "/opt/outofband/src/deploy/clean.sh"
+  ssh -t -- "$REMOTE" /opt/outofband/src/deploy/clean.sh
 
   log_info "remote clean complete"
   exit 0

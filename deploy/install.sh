@@ -57,17 +57,24 @@ if [ -n "$REMOTE" ]; then
   [ "$REMOTE_USER" != "$REMOTE" ] || die "expected user@host, got: $REMOTE"
 
   log_info "preparing $REMOTE"
-  ssh "$REMOTE" "sudo mkdir -p /opt/outofband/src && sudo chown ${REMOTE_USER}:${REMOTE_USER} /opt/outofband/src"
+  ssh -- "$REMOTE" 'sudo mkdir -p /opt/outofband/src && sudo chown "$(id -un):$(id -gn)" /opt/outofband/src'
 
   log_info "syncing source to $REMOTE:/opt/outofband/src"
-  rsync -az --delete --exclude target/ --exclude .git/ "$PROJECT_ROOT"/ "$REMOTE":/opt/outofband/src/
+  rsync -az --delete --protect-args \
+    --exclude '/.git/' \
+    --exclude '/.claude/' \
+    --exclude '/.cm/' \
+    --exclude '/dev-config.toml' \
+    --exclude 'dist/' \
+    --exclude 'target/' \
+    -- "$PROJECT_ROOT"/ "$REMOTE":/opt/outofband/src/
 
   if [ -n "$DOMAIN" ]; then
     log_warn "TLS flags are not forwarded through the remote re-exec; once this completes, run: ssh $REMOTE '/opt/outofband/src/deploy/install.sh --domain $DOMAIN --email $EMAIL'"
   fi
 
   log_info "running install.sh on $REMOTE"
-  ssh "$REMOTE" "/opt/outofband/src/deploy/install.sh"
+  ssh -- "$REMOTE" /opt/outofband/src/deploy/install.sh
 
   log_info "remote install complete"
   exit 0

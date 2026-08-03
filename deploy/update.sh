@@ -26,13 +26,20 @@ if [ -n "$REMOTE" ]; then
   [ "$REMOTE_USER" != "$REMOTE" ] || die "expected user@host, got: $REMOTE"
 
   log_info "preparing $REMOTE"
-  ssh "$REMOTE" "sudo mkdir -p /opt/outofband/src && sudo chown ${REMOTE_USER}:${REMOTE_USER} /opt/outofband/src"
+  ssh -- "$REMOTE" 'sudo mkdir -p /opt/outofband/src && sudo chown "$(id -un):$(id -gn)" /opt/outofband/src'
 
   log_info "syncing source to $REMOTE:/opt/outofband/src"
-  rsync -az --delete --exclude target/ --exclude .git/ "$PROJECT_ROOT"/ "$REMOTE":/opt/outofband/src/
+  rsync -az --delete --protect-args \
+    --exclude '/.git/' \
+    --exclude '/.claude/' \
+    --exclude '/.cm/' \
+    --exclude '/dev-config.toml' \
+    --exclude 'dist/' \
+    --exclude 'target/' \
+    -- "$PROJECT_ROOT"/ "$REMOTE":/opt/outofband/src/
 
   log_info "running update.sh on $REMOTE"
-  ssh "$REMOTE" "/opt/outofband/src/deploy/update.sh"
+  ssh -- "$REMOTE" /opt/outofband/src/deploy/update.sh
 
   log_info "remote update complete"
   exit 0

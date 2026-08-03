@@ -34,10 +34,10 @@ update:
     ./deploy/update.sh
 
 update-remote remote:
-    ./deploy/update.sh {{remote}}
+    ./deploy/update.sh {{ quote(remote) }}
 
 clean-local:
     ./deploy/clean.sh
 
 clean-remote remote:
-    ./deploy/clean.sh {{remote}}
+    ./deploy/clean.sh {{ quote(remote) }}
