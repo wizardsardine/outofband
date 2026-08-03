@@ -66,11 +66,18 @@ against a remote host with `user@host` (rsyncs the project to
   and the renewal timer in place.
 
 The site ships with `server_name outofband.wizardsardine.com`, so a plain
-install needs no domain flag. `install.sh` also accepts
-`--domain <host> --email <address>` (valid only together) to deploy under
-a different name: if the domain already resolves to the host, it sets
-`server_name` and runs certbot automatically. Otherwise do it by hand once
-DNS points at the host, then reload nginx and run certbot:
+install needs no domain flag. The TLS flags are forwarded through the
+remote re-exec, so a one-line remote deploy issues the certificate too:
+
+```
+./deploy/install.sh user@host --domain outofband.wizardsardine.com --email <address>
+```
+
+`--domain` and `--email` are valid only together, and deploy under a
+different name if you pass one. Certbot runs only when the domain already
+resolves to the host, so a certificate is never requested for a name that
+cannot answer the challenge. Otherwise do it by hand once DNS points at
+the host, then reload nginx and run certbot:
 
 ```
 sudo systemctl reload nginx

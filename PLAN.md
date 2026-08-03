@@ -1023,7 +1023,11 @@ invoked from the repo root or from `deploy/`. Each supports two modes:
 with no argument it operates on the local machine; with a `user@host`
 argument it rsyncs the project to `/opt/outofband/src` on the remote,
 excluding build output, git data and tool state. It first creates the
-directory over SSH, then re-executes itself there without arguments.
+directory over SSH, then re-executes itself there. `install.sh` forwards
+its `--domain` and `--email` flags to that remote run, requoted with
+`printf %q` since the command crosses a shell: certbot has to run on the
+host that answers the ACME challenge, so dropping them would silently
+leave a remote deploy on plain HTTP.
 Nothing requires being run as root; `sudo` is invoked internally for
 privileged steps only.
 

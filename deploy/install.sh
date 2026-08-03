@@ -63,12 +63,16 @@ if [ -n "$REMOTE" ]; then
     --exclude 'target/' \
     -- "$PROJECT_ROOT"/ "$REMOTE":/opt/outofband/src/
 
+  # The remote runs through a shell, so the flags are requoted rather than
+  # interpolated raw: certbot has to run on the host that answers the ACME
+  # challenge, and skipping it here would leave the site on plain HTTP.
+  REMOTE_CMD="/opt/outofband/src/deploy/install.sh"
   if [ -n "$DOMAIN" ]; then
-    log_warn "TLS flags are not forwarded through the remote re-exec; once this completes, run: ssh $REMOTE '/opt/outofband/src/deploy/install.sh --domain $DOMAIN --email $EMAIL'"
+    REMOTE_CMD="$REMOTE_CMD --domain $(printf '%q' "$DOMAIN") --email $(printf '%q' "$EMAIL")"
   fi
 
   log_info "running install.sh on $REMOTE"
-  ssh -- "$REMOTE" /opt/outofband/src/deploy/install.sh
+  ssh -- "$REMOTE" "$REMOTE_CMD"
 
   log_info "remote install complete"
   exit 0
