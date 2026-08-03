@@ -1,6 +1,7 @@
 //! `AppState`, the fee cache, and the routes that need no transaction
-//! handling: `GET /fee` and `GET /health`. `POST /broadcast` and the rate
-//! limiter join this module in a later phase.
+//! handling: `GET /fee` and `GET /health`. `POST /broadcast` joins this
+//! module in a later phase; the rate limiter it will use is already part
+//! of `AppState`.
 
 use std::sync::Arc;
 
@@ -14,6 +15,8 @@ use serde::Serialize;
 use slipstream_client::{FeeInfo, SlipstreamClient};
 use tokio::sync::RwLock;
 
+use crate::rate_limit::RateLimiter;
+
 /// After this many consecutive failed refresh attempts, `/fee` reports
 /// `stale: true` alongside the last-known value rather than silently
 /// serving a number that may no longer reflect Slipstream's floor.
@@ -23,6 +26,7 @@ const STALE_AFTER_CONSECUTIVE_FAILURES: u32 = 3;
 pub struct AppState {
     pub slipstream: Arc<SlipstreamClient>,
     pub fee_cache: FeeCache,
+    pub rate_limiter: RateLimiter,
 }
 
 /// `Arc<RwLock<..>>` around the last successfully polled [`FeeInfo`] plus a
@@ -142,6 +146,7 @@ mod tests {
         AppState {
             slipstream: Arc::new(SlipstreamClient::new(&slipstream_config)),
             fee_cache,
+            rate_limiter: RateLimiter::new(std::time::Duration::from_secs(600), 100),
         }
     }
 
