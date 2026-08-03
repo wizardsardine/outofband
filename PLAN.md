@@ -637,18 +637,21 @@ the split headline uses the teal range
 100%)` on the first line and the violet range
 `linear-gradient(237deg, #5433ff 0%, #6e38ff 40%, #853cff 60%, #a341ff
 80%, #ac43ff 100%)` on the second, both via `background-clip: text`.
-Primary buttons ("Add to queue", "Send batch") are teal-on-black
-outlines that on hover **fill with the gradient**
-(`linear-gradient(231.49deg, #61ffe1 32.13%, #5572f5 69.65%, #a341ff
-103.41%)`, `color:#000`, transparent border) — not a color swap. Pressed
-keeps that fill but adds `filter:brightness(.82)` and
-`transform:translateY(1px)` with the transition suppressed, so a click
-registers instantly instead of easing; the rule must follow the hover rule
-to win while the pointer is held. The disabled state is `#0c0c0c` on
-`#1f1f1f` with `#4a4a4a` text and `cursor:not-allowed`. All other
-transitions are `.2s ease-in-out`. Each queue row's own send control uses
-the same three states at row scale (11px, `6px 12px` padding), bordered
-rather than bare text so it reads as something to press.
+Primary buttons ("Add to queue", "Send batch") match `.btn-primary` on
+wizardsardine.com rather than the mockup's teal outline: a solid black
+block, white label, **no border**, 2px radius. On hover they fill with
+`--ws-gradient` in full, all fourteen stops as published in their
+`variables.css`, take black text and a
+`drop-shadow(0 0 2px rgba(0,0,0,.1))`. The mockup's three-stop
+approximation of that gradient bands visibly and must not be used here. **There is deliberately no pressed
+state** — the design system defines none on any of its buttons, and
+inventing one made these look foreign. The hover rule is wrapped in
+`@media (hover: hover)` so the fill cannot stick after a tap on a touch
+screen, and carries `!important` because every button pins its rest
+colours in an inline `style` attribute, which outranks any class selector.
+The disabled state is `#0c0c0c` with `#4a4a4a` text and
+`cursor:not-allowed`. Each queue row's own send control is the same button
+at row scale (11px, `7px 12px` padding).
 
 A button whose label changes never resizes. Each one is an `inline-grid`
 with a single named area holding two children stacked in the same cell: a

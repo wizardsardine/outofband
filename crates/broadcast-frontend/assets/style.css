@@ -19,22 +19,23 @@ textarea::placeholder, input::placeholder { color: #454545; }
 textarea:focus, input:focus { outline: none; border-color: #5fe7e4; }
 button { transition: all .2s ease-in-out; }
 
-.primary-btn:hover:not(:disabled) {
-  background: linear-gradient(231.49deg, #61ffe1 32.13%, #5572f5 69.65%, #a341ff 103.41%);
-  color: #000;
-  border-color: transparent;
+/* Matches `.btn-primary:hover` on wizardsardine.com, using the full
+   14-stop `--ws-gradient` from their variables.css rather than a
+   three-stop approximation, which banded visibly. `!important`
+   because the buttons carry their rest state in an inline style
+   attribute, which outranks any class selector on its own. The
+   `hover: hover` guard keeps the fill from sticking after a tap on a
+   touch screen. There is deliberately no pressed state: the design
+   system has none. */
+@media (hover: hover) {
+  .primary-btn:hover:not(:disabled) {
+    background-image: linear-gradient(231.49deg, #61ffe1 32.13%, #60f8e1 37.38%, #5fe7e4 44.13%, #5ccbe8 52.39%, #59a4ee 60.64%, #5572f5 69.65%, #5133ff 79.4%, #5433ff 86.15%, #5d35ff 90.66%, #6e38ff 95.16%, #853cff 99.66%, #a341ff 103.41%, #ac43ff 104.16%) !important;
+    color: #000 !important;
+    filter: drop-shadow(0px 0px 2px rgba(0, 0, 0, .1));
+  }
 }
 
-/* Pressed. Must follow the hover rule to win while the pointer is held. */
-.primary-btn:active:not(:disabled) {
-  background: linear-gradient(231.49deg, #61ffe1 32.13%, #5572f5 69.65%, #a341ff 103.41%);
-  color: #000;
-  border-color: transparent;
-  filter: brightness(.82);
-  transform: translateY(1px);
-  transition-duration: 0s;
-}
-.remove-btn:hover:not(:disabled) { color: #ef445f; }
+.remove-btn:hover:not(:disabled) { color: #ef445f !important; }
 
 /* A button whose label changes must not resize under the pointer. The
    hidden sizer holds the widest label the button can show; the visible

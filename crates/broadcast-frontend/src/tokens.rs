@@ -18,6 +18,8 @@ pub const BODY_COPY: &str = "#909090";
 pub const CARD_NESTED: &str = "#060606";
 pub const TEXT_PRIMARY: &str = "#f4f4f4";
 pub const ACCENT_TEAL: &str = "#5fe7e4";
+/// Primary button label, as on wizardsardine.com.
+pub const TEXT_WHITE: &str = "#fff";
 /// Brighter teal used for status reads (Ready/Accepted dots and labels,
 /// the "Clear the floor" count) — distinct from [`ACCENT_TEAL`], which
 /// dresses interactive outlines and hovers.
@@ -61,18 +63,17 @@ pub const BLOCK_EXPLORER_TX_URL: &str = "https://mempool.space/tx/";
 /// Shared grid template for the queue table's header and rows.
 pub const QUEUE_ROW_COLUMNS: &str = "26px minmax(0,2.4fr) 110px 130px 150px 120px 30px";
 
-/// Shared look for a primary teal-outline button ("Add to queue",
-/// "Broadcast"): teal on black when enabled, muted and inert when
-/// disabled. The gradient hover fill is CSS (`.primary-btn:hover`), since
-/// an inline `style` attribute cannot express `:hover`.
+/// Shared look for a primary button, matching `.btn-primary` on
+/// wizardsardine.com: a solid black block with white text and no border,
+/// 2px radius. The gradient hover fill is CSS (`.primary-btn:hover`),
+/// since an inline `style` attribute cannot express `:hover`.
 pub fn primary_button_style(enabled: bool, horizontal_padding_px: u16) -> String {
-    if enabled {
-        format!(
-            "border:1px solid {ACCENT_TEAL};border-radius:2px;font-family:inherit;font-size:13.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;padding:13px {horizontal_padding_px}px;cursor:pointer;color:{ACCENT_TEAL};background:#000"
-        )
+    let (color, background, cursor) = if enabled {
+        (TEXT_WHITE, "#000", "pointer")
     } else {
-        format!(
-            "border:1px solid {RULE};border-radius:2px;font-family:inherit;font-size:13.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;padding:14px {horizontal_padding_px}px;cursor:not-allowed;color:{TEXT_DISABLED};background:#0c0c0c"
-        )
-    }
+        (TEXT_DISABLED, "#0c0c0c", "not-allowed")
+    };
+    format!(
+        "border:0;border-radius:2px;font-family:inherit;font-size:13.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;padding:14px {horizontal_padding_px}px;cursor:{cursor};color:{color};background:{background}"
+    )
 }
