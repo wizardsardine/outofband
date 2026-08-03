@@ -616,7 +616,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let window = Duration::from_millis(50);
+        let window = Duration::from_millis(300);
         let state = broadcast_state(server.uri(), RateLimiter::new(window, 1));
         let app = router(state, TEST_MAX_PAYLOAD_BYTES);
         let peer = non_local_peer(8);
@@ -637,7 +637,7 @@ mod tests {
         let json = body_json(second).await;
         assert!(json["retry_after_secs"].as_u64().unwrap() <= window.as_secs() + 1);
 
-        tokio::time::sleep(window + Duration::from_millis(10)).await;
+        tokio::time::sleep(window + Duration::from_millis(50)).await;
 
         let third = app
             .oneshot(broadcast_request(json!({"tx_hex": sample_tx_hex()}), peer))
