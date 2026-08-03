@@ -704,6 +704,14 @@ card then dims and adds "This rate may be out of date." A rate that is not
 a usable positive number counts as a failed poll, since rendering
 0 sat/vB as live would put every queued transaction above the floor.
 
+Once the queue holds anything, the stat strip and queue table are rendered
+**above** the load section rather than below it, departing from the
+mockup's order. The mockup only ever showed an empty-then-filled page read
+top to bottom; in use, a user who has already loaded transactions comes
+back to act on the queue, and a 214px textarea between the hero and the
+rows buries exactly what they returned for. The load section keeps its
+place when the queue is empty.
+
 Load transactions: heading plus the mockup's sentence, capped at `70ch` —
 "Paste or drop signed PSBTs and raw transactions. Your browser sends each
 one straight to MARA Slipstream, which mines it without ever touching the
