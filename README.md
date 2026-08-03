@@ -1,33 +1,31 @@
 # Outofband
 
-A relay in front of [MARA Slipstream](https://slipstream.mara.com): it
-submits a finalized Bitcoin transaction directly to Slipstream, which mines
-it without ever putting it in the public mempool. It exists for the case
-where a key is known to be compromised (predictable RNG), and a normal
-broadcast would lose the race to whoever else can spend those coins. A
-single page lets a user paste or drop signed PSBTs and raw transactions,
-see them analyzed locally, and broadcast them one at a time.
+A single static page in front of [MARA
+Slipstream](https://slipstream.mara.com): paste or drop signed PSBTs and
+raw transactions, see them decoded, finalized and priced locally, then
+submit them one at a time to Slipstream, which mines them without ever
+putting them in the public mempool. It exists for the case where a key is
+known to be compromised (predictable RNG), and a normal broadcast would
+lose the race to whoever else can spend those coins.
 
-The service is an **open relay by design**: neither the browser nor the
-server checks a transaction's fee against Slipstream's floor before
-submitting it. See [Honest limitations](#honest-limitations) before relying
-on this for anything.
+There is no backend. Parsing, finalization, fee maths and the submission
+itself all happen in the browser, and the submission goes straight from
+the tab to `slipstream.mara.com`. A deployment is nginx serving a wasm
+bundle and nothing else, so nothing pasted into the page ever reaches this
+project's host. See [Honest limitations](#honest-limitations) before
+relying on this for anything.
 
 ## Development
 
-`just run` starts the whole stack locally, over plain HTTP, with no nginx,
-no TLS, no systemd, and no root: `broadcast-api` on `127.0.0.1:3010`, and
-`trunk serve` on `:8080` in front of it, killing the backend when the
-frontend process exits.
+`just run` serves the page on `127.0.0.1:8080` over plain HTTP with `trunk
+serve`, and opens a browser; `just serve` is the same without opening one.
+There is nothing else to start, and no credential to fill in: the page
+talks to MARA directly, so the fee card and Broadcast behave in dev
+exactly as they do in production. Pressing Broadcast against the real
+Slipstream is a real submission.
 
-On first run it copies `deploy/config.toml` to `dev-config.toml` at the
-repo root with mode `600` (gitignored, since it may hold a real client
-code) and prints a reminder to fill in `client_code`. Remote deployment
-explicitly excludes this file. The page works before that: the fee
-card polls `GET /fee`, which needs no credential, so the hero and the
-queue's analysis all work; only pressing Broadcast fails, surfacing
-Slipstream's own "Client codes are currently required to submit
-transactions" message per row.
+`SLIPSTREAM_BASE_URL` at build time points the page at another host; with
+it unset the page uses `https://slipstream.mara.com`.
 
 Other targets:
 
@@ -37,7 +35,6 @@ Other targets:
   `crates/broadcast-frontend`.
 - `just test`: `cargo test`, plus `wasm-pack test --headless --firefox`
   in `crates/broadcast-frontend`.
-- `just serve`: frontend only (`trunk serve`); `:3010` must already be up.
 
 ## Deploy
 
@@ -49,116 +46,58 @@ against a remote host with `user@host` (rsyncs the project to
   bootstrap of a fresh Debian/Ubuntu host: installs apt prerequisites
   (`build-essential`, `pkg-config`, `curl`, `rsync`, `nginx`, `certbot`,
   `python3-certbot-nginx`), rustup + the `wasm32-unknown-unknown` target +
-  `trunk` if missing, creates the `outofband` system user and
-  `/etc/outofband`, `/opt/outofband`, `/var/www/outofband`, builds
-  `broadcast-api` and the frontend, installs the binary, the frontend's
-  `dist/`, the config (only if `/etc/outofband/config.toml` doesn't already
-  exist, an existing config is never overwritten), the systemd unit and
-  the nginx site, then runs a health check against `http://127.0.0.1/health`
-  through nginx.
+  `trunk` if missing, creates `/opt/outofband` and `/var/www/outofband`,
+  builds the frontend with `trunk build --release`, installs its `dist/`
+  to `/var/www/outofband`, installs the nginx site and its snippets, then
+  runs a health check against `http://127.0.0.1/` through nginx.
 - `just update` / `just update-remote <host>` runs `deploy/update.sh`.
-  Code-only redeploy: rebuilds the binary and the wasm frontend,
-  reinstalls them plus the systemd unit and nginx site, restarts
-  `broadcast-api`, reloads nginx. Never touches `/etc/outofband` or
-  certificates. Application routes, limits, and headers live in
-  `/etc/nginx/snippets/outofband-app.conf`, which updates without replacing
-  Certbot's TLS server block. A deployment created before this split needs
-  a one-time migration: preserve its TLS and `server_name` directives and
-  replace its old application locations with `include
-  /etc/nginx/snippets/outofband-app.conf;`.
+  Rebuilds the bundle, reinstalls it plus the nginx snippets, reloads
+  nginx. Never touches certificates. Application routes, caching and
+  headers live in `/etc/nginx/snippets/outofband-app.conf`, which updates
+  without replacing Certbot's TLS server block. A deployment created
+  before this split needs a one-time migration: preserve its TLS and
+  `server_name` directives and replace its old application locations with
+  `include /etc/nginx/snippets/outofband-app.conf;`.
 - `just clean-local` / `just clean-remote <host>` runs `deploy/clean.sh`.
-  Stops and removes the service, the nginx site, the binary, and the
-  install directories. Prompts with an explicit `yes` confirmation before
-  removing `/etc/outofband`, since it holds the client code, and again
-  before removing the `outofband` system user. Leaves apt packages and the
-  Rust toolchain in place.
+  Removes the nginx site, its snippets, and the install directories, and
+  clears out what an earlier backend deployment left behind, prompting
+  with an explicit `yes` confirmation before removing the `outofband`
+  system user. Leaves apt packages, the Rust toolchain, TLS certificates
+  and the renewal timer in place.
 
 `install.sh` accepts `--domain example.com --email you@example.com`
 (valid only together): if the domain already resolves to the host, it sets
-`server_name` and runs certbot automatically. `install.sh` prints its
-remaining manual steps at the end of the run; do them once it finishes:
+`server_name` and runs certbot automatically. Otherwise do it by hand once
+DNS points at the host: set the real `server_name` in
+`/etc/nginx/sites-available/outofband.conf` (it ships with the placeholder
+`outofband.example.com`), then reload nginx, then run certbot:
 
-- **If `--domain` wasn't passed, or DNS wasn't ready yet**: set the real
-  `server_name` in `/etc/nginx/sites-available/outofband.conf` (it ships
-  with the placeholder `outofband.example.com`), then reload nginx, then
-  run certbot:
+```
+sudo systemctl reload nginx
+sudo certbot --nginx -d <domain> --redirect --agree-tos -m <email> -n
+```
 
-  ```
-  sudo systemctl reload nginx
-  sudo certbot --nginx -d <domain> --redirect --agree-tos -m <email> -n
-  ```
-
-  Set `server_name` first: `install.sh`'s own automatic certbot path sets
-  it before invoking certbot for the same reason — certbot picks the
-  server block to modify by matching `server_name`, so running it against
-  the placeholder won't target the right site.
-
-- **Always**: once you have a client code (see
-  [Getting a client code](#getting-a-client-code)), fill in `client_code`
-  in `/etc/outofband/config.toml` and restart the service — `install.sh`
-  never fills this in, and the service can't submit transactions without
-  it:
-
-  ```
-  sudo systemctl restart broadcast-api
-  ```
+Set `server_name` first, for the same reason `install.sh` sets it before
+invoking certbot itself: certbot picks the server block to modify by
+matching `server_name`, so running it against the placeholder won't target
+the right site.
 
 The nginx site ships listening on plain port 80 so the first install works
 before DNS or a certificate exist; certbot rewrites it for 443 with the
 Let's Encrypt certificate and installs the renewal timer.
 
-Check the service with `systemctl status broadcast-api`.
-
-### Configuration
-
-Everything lives in `/etc/outofband/config.toml`, templated from
-`deploy/config.toml`:
-
-| Section | Key | Default | Purpose |
-|---|---|---|---|
-| `[slipstream]` | `base_url` | `https://slipstream.mara.com` | Slipstream API root. |
-| | `fee_endpoint` | `/api/rates` | Returns `effective_rate`; no credential needed. |
-| | `submit_endpoint` | `/api/transactions` | Returns `{status, message}`. |
-| | `client_code` | `""` | Secret. `root:outofband`, mode `640`. Required only to submit a transaction; fee rates work without it. |
-| | `request_timeout_secs` | `30` | HTTP timeout for calls to Slipstream. |
-| `[broadcast_api]` | `listen_addr` | `127.0.0.1:3010` | Backend bind address. Local only; nginx is the public surface. |
-| | `fee_poll_secs` | `60` | How often the background task refreshes the fee cache. |
-| | `rate_limit_window_secs` | `600` | Sliding-window length for the per-IP submission limiter. |
-| | `rate_limit_max_tx` | `100` | Submissions an IP may make within that window. |
-| | `max_payload_bytes` | `1048576` (1 MiB) | Maximum transaction-hex length; JSON framing is allowed separately. |
-
-`max_payload_bytes` excludes the largest non-standard transactions: a
-maximal one serializes to roughly 4 MB, about 8 MiB as hex. Raising it to
-`8388608` (8 MiB) to admit those is a change in three places, since nginx
-must stay in step and neither `install.sh` nor `update.sh` derives its
-nginx value from the live config file:
-
-1. Edit `max_payload_bytes` directly in `/etc/outofband/config.toml` and
-   restart the service (`sudo systemctl restart broadcast-api`).
-   `install.sh` only writes this file when it's absent, so an existing
-   deployment's config is never touched automatically.
-2. Edit `MAX_PAYLOAD_BYTES` in `deploy/install.sh` and `deploy/update.sh`
-   (both hardcode it, to derive nginx's `client_max_body_size`) so future
-   installs and updates render a matching nginx value.
-3. Run `just update`. It rewrites the managed nginx application snippet
-   with the matching `client_max_body_size` and leaves the TLS server block
-   untouched. A legacy TLS site must first include
-   `/etc/nginx/snippets/outofband-app.conf` as described above.
-
 ### Logs
 
-Service logs: `journalctl -u broadcast-api`. The service currently logs
-only lifecycle events (listen address on startup, bind/serve errors) to
-stdout/stderr; it never logs a request body or transaction hex anywhere,
-so nothing about a submitted transaction's contents reaches the logs.
-
 nginx access and error logs: `/var/log/nginx/outofband-access.log` and
-`/var/log/nginx/outofband-error.log`.
+`/var/log/nginx/outofband-error.log`. They record requests for the page
+and its assets and nothing else: a submission goes from the browser to
+MARA without passing through this host, so no transaction hex exists in
+any log here to leak.
 
 ### Firewall
 
-The backend binds to `127.0.0.1:3010` only; nginx is the sole public
-surface. With UFW, allow 22, 80 and 443, and nothing else:
+nginx is the only thing listening, and it only serves static files. With
+UFW, allow 22, 80 and 443, and nothing else:
 
 ```
 sudo ufw allow 22
@@ -166,88 +105,23 @@ sudo ufw allow 80
 sudo ufw allow 443
 ```
 
-### Getting a client code
-
-Submitting a transaction (not fetching the fee rate) requires a Slipstream
-client code. Contact `foundation@mara.com` to get one. Rotate it if it has
-ever been pasted into an email, a chat, an issue tracker, or shell
-history: whoever holds it can submit under this account, and MARA offers
-no recourse for misuse. The deployed service (`/etc/outofband/config.toml`,
-`root:outofband`, mode `640`) is the only place it should live.
-
-## API note for scripted callers
-
-`POST /broadcast` accepts exactly one finalized raw transaction hex per
-request, and nothing else: no PSBT support, no batching, no multipart. A
-PSBT must be finalized locally first, either with `bitcoin-cli
-finalizepsbt` or by pasting it into the web page and copying the resulting
-hex.
-
-```
-curl -s -X POST https://your-domain.example/broadcast \
-  -H 'Content-Type: application/json' \
-  -d '{"tx_hex": "0200000001..."}'
-```
-
-Response: `{"txid": "...", "vsize": n, "status":
-"submitted"|"rejected"|"invalid", "error": "..."|null}`. HTTP status is
-`400` for hex that is not a well-formed transaction encoding or has no
-inputs or outputs, `413` over `max_payload_bytes`, and `429` when rate
-limited. Application-level `429` responses include `retry_after_secs`;
-nginx may return its own non-JSON `429` first. The status is `200`
-whenever Slipstream answered with a plain accept/reject on the
-submission itself (`status: "submitted"`, or `status: "rejected"` for
-e.g. a fee-too-low bounce, surfaced verbatim in `error`), and `502` both
-when Slipstream is unreachable *and* when Slipstream's response indicates
-a client-code problem (missing or rejected credential) — that case also
-comes back as `status: "rejected"`, so a `200`/`"rejected"` pair is not
-the only shape an "answered" submission can take; a scripted caller
-should check the HTTP status, not just the body's `status` field, before
-concluding the submission itself was evaluated.
-
-For several transactions, loop and submit each finalized hex in turn:
-
-```
-for f in tx1.hex tx2.hex tx3.hex; do
-  curl -s -X POST https://your-domain.example/broadcast \
-    -H 'Content-Type: application/json' \
-    -d "{\"tx_hex\": \"$(cat "$f")\"}"
-  echo
-done
-```
-
-`GET /fee` needs no credential and returns the cached floor:
-`{"effective_rate_sat_vb": n, "age_secs": n, "stale": bool}` (`503` if no
-successful poll has happened yet). `GET /health` is a bare liveness check.
-
 ## Honest limitations
 
-- **Nothing validates a fee.** Not the browser, not the server. A
-  below-floor transaction is submitted and bounced by Slipstream rather
-  than withheld, and the bounce consumes a rate-limit slot the same as any
-  other submission.
-- **The displayed floor is cached.** It can lag Slipstream's real threshold
-  by up to `fee_poll_secs`, so a transaction that looked fine when queued
-  can still bounce.
 - **Rejections aren't classified.** Slipstream answers with prose, so
   "fee too low" and "consensus failure" both reach the user as MARA's own
   sentence.
 - **CPFP is unsupported.** A low-fee parent submitted alone is judged and
   rejected on its own rate. Slipstream has a package endpoint for this;
-  this service doesn't use it, so a parent that depends on its child's fee
+  the page doesn't use it, so a parent that depends on its child's fee
   has to go through MARA directly.
-- **Queue behavior is frontend policy, not a server guarantee.** Retry,
-  ordering, and keeping failed rows visible all happen in the browser; the
-  server only ever sees one transaction at a time.
-- **The default 1 MiB payload cap excludes the largest non-standard
-  transactions** unless raised (see [Configuration](#configuration)).
-- **The service is an open relay by design.** The only protections are the
-  per-IP rate-limit budget, nginx's `limit_req`, and the payload cap.
-- **MARA offers no support and no recourse.** An accepted transaction that
-  was built wrong, or paid the wrong fee, cannot be helped after the fact.
+- **The browser talks to MARA directly.** MARA sees the user's IP address,
+  because the connection is the user's own and nothing here proxies it;
+  Tor or a VPN is the only answer to that. It also means MARA can break
+  this site with no deploy on our side, by tightening CORS on
+  `/api/transactions` or moving the endpoint.
 
 ## Links
 
 - [Coldcard RNG vulnerability, and why you might need this tool](https://wizardsardine.com/blog/coldcard-rng-vulnerability/)
-- [MARA Slipstream](https://slipstream.mara.com): the service this relay
+- [MARA Slipstream](https://slipstream.mara.com): the service this page
   submits to; its terms and no-support policy are stated on that site.
