@@ -121,8 +121,8 @@ fn floor_answer(fee: Option<&FeeSnapshot>) -> String {
         None => "—".to_string(),
     };
     format!(
-        "Slipstream mines only what clears its own fee floor, currently {floor} sat/vB. Anything \
-         below is rejected outright rather than queued, so a transaction that misses the floor \
-         needs to be rebuilt at a higher rate before it can be accepted."
+        "Slipstream mines only what clears its own fee floor, currently {floor} sat/vB. A lower-rate \
+         transaction may enter Slipstream's private mempool but is not expected to be mined. Rebuild \
+         it at a higher rate before relying on the submission."
     )
 }
