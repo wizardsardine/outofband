@@ -8,11 +8,34 @@ use wasm_bindgen_futures::spawn_local;
 use web_sys::FileList as WebFileList;
 use yew::prelude::*;
 
+use crate::unpack::DECOMPRESSION_BUDGET_BYTES;
 
 #[derive(Debug, PartialEq)]
 pub enum LoadedFile {
     Loaded { name: String, bytes: Box<[u8]> },
     Failed { name: String, error: String },
+}
+
+#[derive(Debug, PartialEq)]
+enum LoadSizeViolation {
+    File(usize),
+    Aggregate,
+}
+
+fn load_size_violation(sizes: &[u64]) -> Option<LoadSizeViolation> {
+    if let Some(index) = sizes
+        .iter()
+        .position(|size| *size > DECOMPRESSION_BUDGET_BYTES)
+    {
+        return Some(LoadSizeViolation::File(index));
+    }
+    let total = sizes
+        .iter()
+        .try_fold(0u64, |total, size| total.checked_add(*size));
+    match total {
+        Some(total) if total <= DECOMPRESSION_BUDGET_BYTES => None,
+        Some(_) | None => Some(LoadSizeViolation::Aggregate),
+    }
 }
 
 #[derive(Default)]
@@ -52,20 +75,40 @@ pub fn use_file_load(on_loaded: Callback<Vec<LoadedFile>>) -> Callback<WebFileLi
         files.sort_by_key(gloo_file::File::name);
 
         spawn_local(async move {
-            let mut loaded = Vec::with_capacity(files.len());
-            for file in &files {
-                let name = file.name();
-                match read_as_bytes(file).await {
-                    Ok(bytes) => loaded.push(LoadedFile::Loaded {
-                        name,
-                        bytes: bytes.into_boxed_slice(),
-                    }),
-                    Err(err) => loaded.push(LoadedFile::Failed {
-                        name,
-                        error: format!("could not read file: {err:?}"),
-                    }),
+            let sizes: Vec<u64> = files.iter().map(|file| file.size()).collect();
+            let loaded = match load_size_violation(&sizes) {
+                Some(LoadSizeViolation::File(index)) => vec![LoadedFile::Failed {
+                    name: files[index].name(),
+                    error: format!(
+                        "file size exceeds the {} MiB load limit",
+                        DECOMPRESSION_BUDGET_BYTES / (1024 * 1024)
+                    ),
+                }],
+                Some(LoadSizeViolation::Aggregate) => vec![LoadedFile::Failed {
+                    name: "Selected files".to_string(),
+                    error: format!(
+                        "total file size exceeds the {} MiB load limit",
+                        DECOMPRESSION_BUDGET_BYTES / (1024 * 1024)
+                    ),
+                }],
+                None => {
+                    let mut loaded = Vec::with_capacity(files.len());
+                    for file in &files {
+                        let name = file.name();
+                        match read_as_bytes(file).await {
+                            Ok(bytes) => loaded.push(LoadedFile::Loaded {
+                                name,
+                                bytes: bytes.into_boxed_slice(),
+                            }),
+                            Err(err) => loaded.push(LoadedFile::Failed {
+                                name,
+                                error: format!("could not read file: {err:?}"),
+                            }),
+                        }
+                    }
+                    loaded
                 }
-            }
+            };
 
             for files in coordinator.borrow_mut().complete(invocation, loaded) {
                 on_loaded.emit(files);
@@ -102,4 +145,19 @@ mod tests {
         );
     }
 
+    #[test]
+    fn load_sizes_enforce_file_and_aggregate_limits_before_reading() {
+        assert_eq!(load_size_violation(&[DECOMPRESSION_BUDGET_BYTES]), None);
+        assert_eq!(
+            load_size_violation(&[DECOMPRESSION_BUDGET_BYTES + 1]),
+            Some(LoadSizeViolation::File(0))
+        );
+        assert_eq!(
+            load_size_violation(&[
+                DECOMPRESSION_BUDGET_BYTES / 2,
+                DECOMPRESSION_BUDGET_BYTES / 2 + 1,
+            ]),
+            Some(LoadSizeViolation::Aggregate)
+        );
+    }
 }
