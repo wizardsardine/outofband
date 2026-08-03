@@ -22,7 +22,7 @@ toml = "0.8"
 base64 = "0.22"
 bitcoin = { version = "0.32", default-features = false, features = ["std", "base64"] }
 chrono = { version = "0.4", features = ["serde"] }
-miniscript = "12"
+miniscript = { version = "12", default-features = false, features = ["std"] }
 yew = { version = "0.21", features = ["csr"] }
 gloo-net = "0.6"
 gloo-timers = "0.3"

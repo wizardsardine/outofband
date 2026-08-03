@@ -9,3 +9,4 @@ workspace = true
 
 [dependencies]
 bitcoin.workspace = true
+miniscript.workspace = true

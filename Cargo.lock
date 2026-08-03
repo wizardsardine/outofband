@@ -140,6 +140,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3011d1213f159867b13cfd6ac92d2cd5f1345762c63be3554e84092d85a50bbd"
 
 [[package]]
+name = "miniscript"
+version = "12.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8343cc1ef1408bd9bdbf69f7aef47017dfab7e6349ec26fddf62e0e9fb5a4cf"
+dependencies = [
+ "bech32",
+ "bitcoin",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -232,6 +242,7 @@ name = "tx-core"
 version = "0.1.0"
 dependencies = [
  "bitcoin",
+ "miniscript",
 ]
 
 [[package]]
