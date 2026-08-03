@@ -46,8 +46,8 @@ browser
       ▼
 server (axum, 127.0.0.1:3010, behind nginx)
   POST /broadcast {tx_hex}
-      rate-limit check → hex decodes as consensus-valid Transaction?
-      → submit → record in limiter
+      well-formed transaction with inputs and outputs?
+      → atomically reserve rate-limit slot → submit
       │
       ▼
 MARA Slipstream
@@ -108,16 +108,16 @@ transaction the server relays come from one implementation.
 | GET    | `/health`    | liveness                                    |
 
 `status` is `submitted|rejected|invalid`. 400 unparseable hex, 413 over
-`max_payload_bytes` (1 MiB default), 429 with `retry_after_secs`, 502
-Slipstream unreachable; 200 whenever a submission was attempted and
+`max_payload_bytes` of transaction hex (1 MiB default), 429 when rate limited, 502 Slipstream
+unreachable; application-level 429 responses include `retry_after_secs`,
+while nginx can return a non-JSON 429. 200 whenever a submission was attempted and
 answered, including a fee-too-low rejection surfaced verbatim.
 
 `GET /fee` is served from a background-polled cache, so anonymous page
 loads never fan out into requests against MARA. Rate limiting is a per-IP
-sliding window (100 submissions / 600 s by default), keyed off
-`X-Forwarded-For` → `X-Real-IP` → peer address, trustworthy because the
-backend binds to localhost and only nginx can reach it. Localhost is
-exempt.
+sliding window (100 submissions / 600 s by default), keyed off an
+`X-Real-IP` value overwritten by nginx. Proxy headers are trusted only when
+the socket peer is localhost. Localhost is exempt.
 
 ### Frontend
 
@@ -176,8 +176,9 @@ does not use it, so CPFP is out of scope.
 
 ### Accepted limitations
 
-No fee validation anywhere — a scripted caller can submit anything
-consensus-valid and receive MARA's rejection. The displayed floor is
+No fee validation anywhere: a scripted caller can submit any well-formed
+transaction encoding with inputs and outputs and receive MARA's rejection.
+Slipstream performs the actual transaction validation. The displayed floor is
 cached and can lag the real threshold by up to the poll interval, so a
 comfortable-looking rate can still bounce. Rejections consume the per-IP
 budget like any other submission, which is the price of not gating. Queue
@@ -276,42 +277,37 @@ user-entered input total is unverifiable by us and now gates nothing at
 all — it exists so the user can see a rate before committing. The API
 trusts the caller, and Slipstream remains the final validator.)
 
-Because every queued item has been finalized locally, its txid is known
-before anything is broadcast — `tx-core` computes it from the extracted
-transaction. The queue therefore shows a txid for every row from the
+Because every queued item has a locally parsed or finalized transaction,
+its txid is known before anything is broadcast. `tx-core` computes it from
+the transaction. The queue therefore shows a txid for every row from the
 moment it is queued, independent of broadcast outcome, so a transaction
 whose submission is rejected or never attempted is still identifiable and
 recoverable by the user rather than a row they can only delete.
 
 All parsing, PSBT finalization, and extraction happen in the browser via
 `tx-core` compiled to wasm. When an item is queued, `tx-core` detects the
-format, decodes it, analyzes it (per-input signature state, vsize, fee when
-derivable), and — for PSBTs — finalizes it if needed and extracts the
-network-serialized transaction. Extraction must use
-`Psbt::extract_tx_unchecked_fee_rate()`, **never** the plain
-`extract_tx()`: the latter refuses transactions whose fee rate it judges
-absurd (verified — it rejects with "An absurdly high fee rate of …"),
-which is a fee gate hidden in a library default and contradicts the
-decision that nothing here refuses a submission over its fee. It would
-also fire on precisely the fat-fingered fee MARA says it cannot help
-with, turning a recoverable mistake into a silent refusal. What the
-frontend holds for every queued item is the finalized transaction hex and
-its txid; that hex is the only thing ever sent to the server. A PSBT that cannot be finalized (missing
-signatures / witness data) never leaves the browser: a modal opens
-stating that the
-PSBT cannot be finalized, and the item is not added to the queue — the
-user signs it fully and loads it again. One modal per load operation: if a
-drop or archive contains several unfinalizable PSBTs, a single modal lists
-them all (name and how many of each one's inputs are incomplete) while the
-rest of the load queues normally.
+format, decodes it, validates its UTXO maps, analyzes its fee when
+derivable, and finalizes it if needed. When every UTXO is available,
+miniscript's checked extractor validates each finalized input without
+applying rust-bitcoin's fee-rate limit. UTXO transaction IDs, output indexes, and duplicate witness and
+non-witness UTXO descriptions must agree before either analysis or
+finalization proceeds. What the frontend holds for every queued item is
+the finalized transaction hex and its txid; that hex is the only thing
+ever sent to the server. An already-finalized PSBT missing UTXO data can be
+extracted at the same trust level as a raw transaction, with an explicit
+warning that its fee and final scripts were not validated. Other PSBTs that
+cannot be finalized never leave the browser. The modal lists every refused
+item and its actual finalization reason while the rest of the load queues
+normally.
 Binary uploads are handled the same way — bytes in, analyzed item out —
 so no conversion rules burden the user.
 
 The API consequently accepts exactly one thing: finalized raw transaction
 hex, one transaction per request. Server-side handling is minimal and
-mechanical — the hex must decode as a consensus-valid
-`bitcoin::Transaction` with non-empty inputs and outputs and fit the
-payload cap; there is no PSBT code path, no format detection, and no
+mechanical: the hex must decode as a well-formed `bitcoin::Transaction`,
+have non-empty inputs and outputs, and fit the payload cap. This does not
+validate scripts or chain context; Slipstream performs that validation.
+There is no PSBT code path, no format detection, and no
 fee computation on the server (fee cannot be derived from a raw
 transaction without its previous outputs, and PSBTs, where it could be,
 never arrive). Fee-floor enforcement exists nowhere in this service —
@@ -462,9 +458,9 @@ customer support and at the submitter's own risk: an incorrectly built
 transaction or an incorrect fee cannot be helped after the fact. That
 warning is a design input, not just a disclaimer — it is why every queued
 item is analyzed and its exact fee rate shown against the live floor
-before the user commits (sections 1 and 5), and why the backend
-independently revalidates that what it relays decodes as a consensus-valid
-transaction (section 4). What the warning does *not* justify is refusing
+before the user commits (sections 1 and 5), and why the backend checks that
+what it relays is a well-formed transaction encoding with inputs and outputs
+(section 4). What the warning does *not* justify is refusing
 to submit on the user's behalf: the mistakes MARA cannot help with are
 mistakes that get mined, and a rejected submission costs a round trip and
 nothing else. Analysis informs the decision; it does not make it
@@ -544,7 +540,9 @@ outofband/
     ├── update.sh                   # code-only redeploy
     ├── clean.sh                    # remove everything install.sh created
     ├── config.toml                 # template for /etc/outofband/config.toml
-    ├── nginx/outofband.conf        # site config (see section 6)
+    ├── nginx/outofband.conf        # port-80 server wrapper
+    ├── nginx/outofband-app.conf    # managed routes, limits, and cache policy
+    ├── nginx/outofband-security-headers.conf
     └── systemd/broadcast-api.service
 ```
 
@@ -661,18 +659,19 @@ so the frontend can warn rather than display a dead number.
 one transaction per request, hex only; the field name deliberately mirrors
 Slipstream's own. There is no multipart, no file upload, no archive
 handling, and no PSBT code path anywhere in the backend. The request body
-is capped at `max_payload_bytes` (default 1 MiB) by an axum body-limit
-layer, and nginx enforces the same ceiling in front (section 6). Note for
+accepts up to `max_payload_bytes` of transaction hex (default 1 MiB). The
+axum body limit also allows the fixed JSON framing, and nginx permits a
+coarser whole-body ceiling in front (section 6). Note for
 operators: a maximally large non-standard transaction — the kind Slipstream
 exists for — can reach ~4 MB serialized, ~8 MiB as hex; if such
 transactions are expected, raise `max_payload_bytes` (and the templated
 nginx value) to 8 MiB. Without any decompression step, a larger cap costs
 only what the bytes themselves cost.
 
-Pipeline: rate-limit check → hex-decode as a consensus-valid
-`bitcoin::Transaction` (whitespace-trimmed; non-empty inputs and outputs) →
-`slipstream_client.submit_tx()` → record the submission in the rate limiter
-(only submissions actually attempted against Slipstream count). The server
+Pipeline: trim and decode a well-formed `bitcoin::Transaction`, reject empty
+inputs or outputs, atomically check and record the rate-limit slot, then call
+`slipstream_client.submit_tx()`. Invalid encodings do not consume the
+allowance. The server
 performs no fee computation — a raw transaction's fee is underivable
 without its previous outputs, and PSBTs, where fees could be derived, never
 reach the server — and the browser does not gate on fee either
@@ -687,15 +686,16 @@ Response body:
 "status": "submitted|rejected|invalid",
 "error": <string|null> }`.
 HTTP statuses: 400 not valid transaction hex, 413 payload over
-`max_payload_bytes`, 429 rate limited with a
-`{ "error": ..., "retry_after_secs": n }` body, 502 Slipstream unreachable
-or rejecting at the HTTP level; 200 when a submission was attempted and
-answered, with the outcome in `status` (including Slipstream's fee-too-low
-rejection, surfaced verbatim per item).
+`max_payload_bytes`, 429 rate limited, and 502 Slipstream unreachable.
+Application-level 429 responses carry an
+`{ "error": ..., "retry_after_secs": n }` body; nginx can return a non-JSON
+429 before the application. The frontend retries either form. A 200 is used
+when Slipstream answers the submission, with the outcome in `status`
+(including a fee-too-low rejection surfaced verbatim per item).
 
-Parsing lives in the shared `tx-core` crate — format detection, PSBT
-analysis (per-input finalized/missing-signature state, known-UTXO fee
-derivation), finalize-and-extract, vsize and fee-rate math. The frontend
+Parsing lives in the shared `tx-core` crate — format detection, PSBT UTXO
+validation and fee derivation, checked finalization and extraction, vsize,
+and fee-rate math. The frontend
 compiles all of it to wasm; the backend uses only the hex-decode/validate
 subset, so the number the user sees in the queue and the transaction the
 server relays come from the same code. (The mockup approximates PSBT vsize
@@ -705,7 +705,8 @@ exact figures from the `bitcoin` crate, which builds cleanly for
 unit-testable without the network: format detection, the PSBT finalization
 matrix (already finalized / finalizable / incomplete), vsize and fee
 computation, and fee-rate comparison all get table-driven tests with
-fixture transactions, run for both the native and wasm targets.
+fixture transactions. Native tests exercise the full crate, and the wasm
+build plus frontend browser tests cover its browser integration.
 
 ### Rate limiting
 
@@ -726,22 +727,20 @@ pub struct RateLimiter {
 }
 ```
 
-`check(ip) -> Result<(), Duration>`: prune the IP's deque of entries older
-than the window (and drop IPs whose deques empty, so the map is
-self-cleaning without a background task); if the deque still holds `max_tx`
-entries, return `Err(time until the oldest entry leaves the window)` — the
-handler turns it into the 429 `retry_after_secs`. `record(ip)` pushes
-`Instant::now()` and is called only when a submission is actually attempted
-against Slipstream — requests failing hex validation never
-consume the allowance. Localhost is always exempt (keeps local testing and
+`check_and_record(ip) -> Result<(), Duration>` prunes expired entries for
+all addresses, then checks and records one slot while holding the same lock.
+If the deque already holds `max_tx` entries, it returns the time until the
+oldest entry leaves the window. The handler rounds that duration up for
+`retry_after_secs`. Requests failing transaction decoding never call it and
+do not consume the allowance. Localhost is always exempt (keeps local testing and
 the install health check painless). Unit tests: first `max_tx` allowed and
 the next blocked with a sane remaining duration, allowance recovering as old
 entries expire, distinct IPs independent, localhost exempt.
 
-The client IP is resolved in this order: first entry of `X-Forwarded-For`,
-then `X-Real-IP`, then the socket peer address. The first two are
-trustworthy because the backend binds to localhost and only nginx can reach
-it, and the nginx config (section 6) always sets both headers.
+Proxy headers are considered only when the socket peer is localhost.
+`X-Real-IP`, which nginx overwrites with `$remote_addr`, is preferred;
+nginx's overwritten `X-Forwarded-For` is the fallback. A non-local peer's
+socket address always wins over supplied headers.
 
 ### Configuration
 
@@ -761,10 +760,8 @@ listen_addr = "127.0.0.1:3010"
 fee_poll_secs = 60
 rate_limit_window_secs = 600
 rate_limit_max_tx = 100
-max_payload_bytes = 1048576          # 1 MiB; raise to 8388608 (8 MiB) if
-                                     # full-block non-standard txs are expected.
-                                     # Keep == the nginx client_max_body_size
-                                     # (both templated from one install variable).
+max_payload_bytes = 1048576          # Maximum transaction-hex length. nginx
+                                     # adds JSON framing and rounds up to MiB.
 ```
 
 ## 5. Frontend: `broadcast-frontend`
@@ -971,8 +968,8 @@ quiet `Retry` control beside the status; nothing but the user's `×` or
 "Clear queue" ever removes a row.
 
 Rows carry contextual note cards (the ok/warn/error triples in the tokens
-above) for analysis results: "Missing UTXO data for n input(s). Fee cannot
-be derived.", "Finalized locally: n input(s) to m output(s), ready to
+above) for analysis results: "Missing UTXO data for n input(s). Fee and
+final scripts could not be validated.", "Finalized locally: n input(s) to m output(s), ready to
 extract.", or "Malformed: <reason>" / "Not valid base64 PSBT or hex
 transaction data." (Not-fully-signed PSBTs never become rows — they are
 refused at load time by the finalization modal, section 1.)
@@ -1062,8 +1059,8 @@ Footer: separated by a `#1a1a1a` top rule, "Built by
 "Disclosure" and "Slipstream terms" links on the right, 13px, wrapping on
 narrow screens. Links are `#b0def0`, hovering to `#5fe7e4`, undecorated.
 
-All authoritative validation is Slipstream's, with the server revalidating
-that what it relays is a consensus-valid transaction; the browser's
+All authoritative validation is Slipstream's, with the server checking only
+the transaction encoding and presence of inputs and outputs; the browser's
 analysis exists for instant feedback and its archive limits for tab
 self-protection. Neither browser nor server gates a submission on its fee
 rate (section 1). `unpack.rs` is pure (bytes in, labeled
@@ -1145,9 +1142,9 @@ All deployment is driven by three bash scripts sharing the same skeleton:
 script works whether invoked from the repo root or from `deploy/`. Each
 script supports two modes: with no argument it operates on the local
 machine; with a `user@host` argument it rsyncs the project to
-`/opt/outofband/src` on the remote (`rsync -az --delete --exclude target/
---exclude .git/`, after `ssh`-creating the directory and chowning it to the
-connecting user) and then SSHs in and re-executes itself there without
+`/opt/outofband/src` on the remote after excluding build output, git data,
+tool state, and `dev-config.toml`. It first creates the directory over SSH,
+then re-executes itself there without
 arguments. Nothing requires being run as root; `sudo` is invoked internally
 for privileged steps only.
 
@@ -1168,10 +1165,11 @@ Idempotent bootstrap of a fresh Debian/Ubuntu server, in order:
    `dist/` contents to `/var/www/outofband/`; `deploy/config.toml` to
    `/etc/outofband/config.toml` **only if absent** — an existing (edited)
    config is never overwritten — then `chown root:outofband` and `chmod 640`.
-6. systemd: install the unit, `daemon-reload`, `enable --now broadcast-api`.
-7. nginx: install `deploy/nginx/outofband.conf` to
-   `/etc/nginx/sites-available/`, symlink into `sites-enabled/`, remove the
-   default site, `nginx -t`, reload.
+6. systemd: install the unit, `daemon-reload`, enable it, and restart it so
+   repeated installs cannot leave an old process running.
+7. nginx: install the shared application and security snippets, install the
+   port-80 server wrapper when absent, symlink it into `sites-enabled/`,
+   remove the default site, run `nginx -t`, and reload.
 8. Health check: curl `http://127.0.0.1/health` through nginx and fail
    loudly if it doesn't answer.
 9. Print the remaining manual steps: set the real `server_name`, fill
@@ -1190,9 +1188,10 @@ one-liner to run manually after DNS is ready.
 ### update.sh — soft redeploy
 
 Code-only: rsync source (remote mode), rebuild binary and WASM, reinstall
-binary + dist + systemd unit + nginx conf, `systemctl restart
-broadcast-api`, `nginx -t && systemctl reload nginx`. Never touches users,
-the live config in `/etc/outofband`, or certificates.
+binary, dist, systemd unit, and managed nginx snippets, then restart the
+service and validate and reload nginx. It never touches users, the live
+config in `/etc/outofband`, or certificates. A legacy Certbot site without
+the managed snippet emits a migration warning rather than replacing TLS.
 
 ### clean.sh — teardown
 
@@ -1202,77 +1201,21 @@ deletes the unit, the nginx site (available + enabled symlink), the binary,
 prompt, since it holds the client code — `/etc/outofband`. Leaves apt
 packages and the rust toolchain in place.
 
-### nginx site — `deploy/nginx/outofband.conf`
+### nginx configuration
 
-One `server` block, listening on 80 (v4 + v6) until certbot rewrites it:
+`deploy/nginx/outofband.conf` is a small port-80 server wrapper. It includes
+`/etc/nginx/snippets/outofband-app.conf`, generated from
+`deploy/nginx/outofband-app.conf`. The application snippet owns routes,
+headers, cache policy, logs, the payload cap, and request limiting. Keeping
+that policy outside the server wrapper lets updates replace it without
+overwriting the TLS directives Certbot adds to the wrapper.
 
-```nginx
-server {
-    listen 80;
-    listen [::]:80;
-    server_name outofband.example.com;   # set at install / by --domain
-
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "DENY" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-
-    # coarse pre-filter ahead of the app's own limiter
-    # (zone declared in http{} via a conf.d snippet the installer drops in:
-    #  limit_req_zone $binary_remote_addr zone=outofband_api:10m rate=60r/m;)
-
-    # the three API routes, matched exactly; a regex location wins over
-    # the `location /` prefix below, so static serving is unaffected
-    location ~ ^/(fee|broadcast|health)$ {
-        proxy_pass http://127.0.0.1:3010;
-        proxy_http_version 1.1;
-
-        # CRITICAL: pass the client IP — the app's rate limiter keys on it
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-
-        # equal to the backend's max_payload_bytes plus JSON overhead;
-        # both templated from one variable in install.sh
-        client_max_body_size 2m;
-
-        # per-tx calls: allow bursts so sequential batches flow,
-        # while still throttling raw request floods
-        limit_req zone=outofband_api burst=30 nodelay;
-    }
-
-    location / {
-        root /var/www/outofband;
-        index index.html;
-        try_files $uri $uri/ /index.html;   # SPA fallback
-
-        location ~* \.(wasm|js)$ {
-            expires 1h;
-            add_header Cache-Control "public, immutable";
-        }
-        location = /index.html {
-            expires -1;
-            add_header Cache-Control "no-cache, no-store, must-revalidate";
-        }
-    }
-
-    autoindex off;
-    access_log /var/log/nginx/outofband-access.log;
-    error_log  /var/log/nginx/outofband-error.log;
-}
-```
-
-The nginx `limit_req` rate (60 requests/minute, burst 30) is deliberately
-looser than the app limiter: it exists to shed raw floods cheaply, while the
-sliding-window limiter in the app enforces the meaningful per-IP
-transaction budget. A batch of 100 flows through both: the burst absorbs the
-first items and the sequential loop's round-trip latency naturally paces the
-rest; if nginx ever returns 429/503 mid-batch, the frontend's pause-and-
-retry loop (section 5) absorbs it.
+The API proxy overwrites both client-IP headers with `$remote_addr`.
+Application code trusts them only from a localhost peer. nginx returns 429
+when its coarse limiter fires; the frontend retries both nginx's non-JSON
+response and the application's JSON 429 response. Security headers are
+included again in nested cache-policy locations because an nginx
+`add_header` in a child location replaces inherited headers.
 
 ### systemd unit — `deploy/systemd/broadcast-api.service`
 
@@ -1292,8 +1235,19 @@ Restart=always
 RestartSec=10s
 NoNewPrivileges=true
 PrivateTmp=true
+PrivateDevices=true
 ProtectSystem=strict
 ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+AmbientCapabilities=
 ReadOnlyPaths=/etc/outofband
 
 [Install]
@@ -1324,8 +1278,9 @@ test:
 run:
     #!/usr/bin/env bash
     set -euo pipefail
-    [ -f dev-config.toml ] || { cp deploy/config.toml dev-config.toml; \
-        echo "created dev-config.toml — fill client_code to broadcast"; }
+    [ -f dev-config.toml ] || { install -m 600 deploy/config.toml dev-config.toml; \
+        echo "created dev-config.toml; fill client_code to broadcast"; }
+    chmod 600 dev-config.toml
     cargo run -p broadcast-api -- dev-config.toml &
     trap 'kill %1 2>/dev/null || true' EXIT
     cd crates/broadcast-frontend && trunk serve --open
@@ -1334,7 +1289,7 @@ serve:
     cd crates/broadcast-frontend && trunk serve   # frontend only, :3010 must be up
 
 deploy remote:
-    ./deploy/install.sh {{remote}}
+    ./deploy/install.sh {{ quote(remote) }}
 
 local:
     ./deploy/install.sh
@@ -1343,13 +1298,13 @@ update:
     ./deploy/update.sh
 
 update-remote remote:
-    ./deploy/update.sh {{remote}}
+    ./deploy/update.sh {{ quote(remote) }}
 
 clean-local:
     ./deploy/clean.sh
 
 clean-remote remote:
-    ./deploy/clean.sh {{remote}}
+    ./deploy/clean.sh {{ quote(remote) }}
 ```
 
 `just run` is the everyday development command and the only one that
@@ -1363,9 +1318,10 @@ the loop while developing; `just local` remains available for rehearsing
 a real install on this machine, and it is the only local command that
 wants `sudo`.
 
-The config it uses is `dev-config.toml` at the repo root, copied from
-`deploy/config.toml` on first run and listed in `.gitignore` because it
-may hold a real client code. The page is fully usable before that code is
+The config it uses is `dev-config.toml` at the repo root, copied with mode
+`600` from `deploy/config.toml` on first run and listed in `.gitignore`
+because it may hold a real client code. Remote deployment also excludes it
+explicitly. The page is fully usable before that code is
 filled in: the fee card polls `GET /api/rates`, which needs no credential
 (section 2), so the hero renders a live floor and the queue analyzes
 transactions normally — only pressing Broadcast fails, with Slipstream's
@@ -1396,8 +1352,10 @@ payloads may correspond to not-yet-broadcast transactions the user
 considers private.
 
 The server's input surface is deliberately tiny: one JSON string per
-request that must hex-decode to a consensus-valid transaction — bounded, no
-PSBT parsing, no multipart, no file uploads, no decompression — so the
+request that must hex-decode to a well-formed transaction with at least one
+input and output. Script and chain-context validation remains Slipstream's
+job. The bounded server surface has no PSBT parsing, multipart, file uploads,
+or decompression, so the
 decompression-amplification DoS class does not exist here. Worst-case
 memory per in-flight request is the payload cap; no concurrency semaphore
 is needed. Archive parsing happens only in the browser, where a hostile
@@ -1409,9 +1367,11 @@ anywhere — `reqwest` uses `rustls`, not OpenSSL — though the dependency
 graph does vendor C in two places, libsecp256k1 and the rustls crypto
 provider, both compiled from source (section 3).
 
-The Slipstream client code exists only in `/etc/outofband/config.toml`
-(owned root:outofband, mode 640), is excluded from `update.sh`'s rsync and
-from git, and is redacted by the client crate from any surfaced error text.
+The deployed Slipstream client code exists only in
+`/etc/outofband/config.toml` (owned root:outofband, mode 640). The local
+development config has mode 600 and is excluded from git and every remote
+rsync. The client crate redacts the configured value from every surfaced
+upstream error or message.
 Because whoever holds the code can submit under this account — and MARA
 offers no recourse for misuse — the code should be rotated (via
 foundation@mara.com) if it has ever been pasted into email threads, chats,
@@ -1424,8 +1384,8 @@ Honest limitations to document in the README rather than hide: nothing in
 this service validates a fee — not the server, not the browser. The
 displayed rate is analysis, Slipstream is the only judge, and a
 below-floor transaction is submitted and bounced rather than withheld, so
-both the web UI and a scripted caller can send anything consensus-valid
-and simply receive MARA's rejection. That rejection consumes a slot in the
+both the web UI and a scripted caller can send any locally accepted
+transaction encoding and receive MARA's validation result. That rejection consumes a slot in the
 per-IP rate-limit budget like any other submission, which is the practical
 cost of not gating. The displayed minimum fee is additionally a cached
 value that can lag MARA's real threshold by up to the poll interval — a
@@ -1448,8 +1408,8 @@ from the Slipstream API documentation into `config.toml` and the
 `slipstream-client` fixtures) is **complete** — section 2 holds the
 verified values, confirmed against the live API on 2026-08-02. The
 milestones below are the narrative shape of the work; the build itself
-was split into smaller reviewable changesets. Task 1 builds `slipstream-client` and `tx-core` with full
-unit tests on both native and wasm targets (Slipstream wire format, PSBT
+was split into smaller reviewable changesets. Task 1 builds `slipstream-client` and `tx-core` with
+native unit tests plus a wasm build and browser integration tests (Slipstream wire format, PSBT
 finalization matrix, vsize/fee computation, fee-rate comparison against a
 floor, txid derivation from a finalized transaction), plus the frontend's
 `unpack.rs` under `wasm-bindgen-test` (tar/tgz/zip fixtures, text-file
@@ -1473,4 +1433,3 @@ README (deploy, full config key reference including when to raise
 `max_payload_bytes`, certbot, `journalctl -u broadcast-api` / log
 locations, firewall, update/teardown, and the API note for scripted users:
 one finalized transaction hex per request — finalize PSBTs locally first).
-
