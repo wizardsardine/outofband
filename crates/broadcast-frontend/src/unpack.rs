@@ -13,10 +13,10 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use tx_core::Decoded;
 
-/// Streamed decompression budget shared across an entire archive.
-const DECOMPRESSION_BUDGET_BYTES: u64 = 256 * 1024 * 1024;
-/// Maximum number of entries (files and directories alike) an archive may
-/// contain.
+/// Streamed decompression budget shared across one file load operation.
+pub(crate) const DECOMPRESSION_BUDGET_BYTES: u64 = 256 * 1024 * 1024;
+/// Maximum number of archive entries (files and directories alike) one file
+/// load operation may contain.
 const MAX_ENTRIES: usize = 1000;
 /// Read chunk size, so the budget is checked incrementally rather than
 /// after decompressing an entry in full.
@@ -36,7 +36,7 @@ pub struct UnpackedItem {
 /// fit for direct display; none of them come from a panic.
 #[derive(Debug)]
 pub enum UnpackError {
-    /// The archive contains more than [`MAX_ENTRIES`] entries.
+    /// The selected archives contain more than [`MAX_ENTRIES`] entries.
     TooManyEntries,
     /// Streamed decompression exceeded [`DECOMPRESSION_BUDGET_BYTES`].
     BudgetExceeded,
@@ -50,11 +50,11 @@ impl fmt::Display for UnpackError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             UnpackError::TooManyEntries => {
-                write!(f, "archive has more than {MAX_ENTRIES} entries")
+                write!(f, "selected archives have more than {MAX_ENTRIES} entries")
             }
             UnpackError::BudgetExceeded => write!(
                 f,
-                "decompressed size exceeds the {} MiB budget",
+                "total decompressed size exceeds the {} MiB budget",
                 DECOMPRESSION_BUDGET_BYTES / (1024 * 1024)
             ),
             UnpackError::NestedArchive => write!(f, "nested archives are not allowed"),
@@ -128,24 +128,41 @@ fn is_tar(bytes: &[u8]) -> bool {
     sum == recorded
 }
 
-/// Tracks the decompression budget shared across every entry of one
-/// archive (and, for `.tar.gz`, across both the gzip and tar layers).
-struct Budget {
-    remaining: u64,
+/// Tracks limits shared across every file selected in one load operation.
+pub(crate) struct LoadBudget {
+    remaining_bytes: u64,
+    remaining_entries: usize,
 }
 
-impl Budget {
-    fn new() -> Self {
-        Budget {
-            remaining: DECOMPRESSION_BUDGET_BYTES,
+impl LoadBudget {
+    pub(crate) fn new() -> Self {
+        LoadBudget {
+            remaining_bytes: DECOMPRESSION_BUDGET_BYTES,
+            remaining_entries: MAX_ENTRIES,
         }
     }
 
-    fn consume(&mut self, n: u64) -> Result<(), UnpackError> {
-        self.remaining = self
-            .remaining
+    #[cfg(test)]
+    fn with_limits(remaining_bytes: u64, remaining_entries: usize) -> Self {
+        LoadBudget {
+            remaining_bytes,
+            remaining_entries,
+        }
+    }
+
+    fn consume_bytes(&mut self, n: u64) -> Result<(), UnpackError> {
+        self.remaining_bytes = self
+            .remaining_bytes
             .checked_sub(n)
             .ok_or(UnpackError::BudgetExceeded)?;
+        Ok(())
+    }
+
+    fn consume_entries(&mut self, n: usize) -> Result<(), UnpackError> {
+        self.remaining_entries = self
+            .remaining_entries
+            .checked_sub(n)
+            .ok_or(UnpackError::TooManyEntries)?;
         Ok(())
     }
 }
@@ -153,7 +170,10 @@ impl Budget {
 /// Reads `reader` to the end in fixed-size chunks, charging each chunk to
 /// `budget` before it is appended — so a decompression bomb is caught
 /// mid-stream rather than after being materialized in full.
-fn read_budgeted<R: Read>(mut reader: R, budget: &mut Budget) -> Result<Vec<u8>, UnpackError> {
+fn read_budgeted<R: Read>(
+    mut reader: R,
+    mut budget: Option<&mut LoadBudget>,
+) -> Result<Vec<u8>, UnpackError> {
     let mut out = Vec::new();
     let mut chunk = [0u8; CHUNK_BYTES];
     loop {
@@ -161,7 +181,9 @@ fn read_budgeted<R: Read>(mut reader: R, budget: &mut Budget) -> Result<Vec<u8>,
         if n == 0 {
             break;
         }
-        budget.consume(n as u64)?;
+        if let Some(budget) = &mut budget {
+            budget.consume_bytes(n as u64)?;
+        }
         out.extend_from_slice(&chunk[..n]);
     }
     Ok(out)
@@ -229,11 +251,9 @@ pub fn is_archive(data: &[u8]) -> bool {
     sniff(data) != Container::Plain
 }
 
-fn unpack_zip(bytes: &[u8], budget: &mut Budget) -> Result<Vec<UnpackedItem>, UnpackError> {
+fn unpack_zip(bytes: &[u8], budget: &mut LoadBudget) -> Result<Vec<UnpackedItem>, UnpackError> {
     let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).map_err(UnpackError::Zip)?;
-    if archive.len() > MAX_ENTRIES {
-        return Err(UnpackError::TooManyEntries);
-    }
+    budget.consume_entries(archive.len())?;
     let mut entries = Vec::with_capacity(archive.len());
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).map_err(UnpackError::Zip)?;
@@ -241,7 +261,7 @@ fn unpack_zip(bytes: &[u8], budget: &mut Budget) -> Result<Vec<UnpackedItem>, Un
             continue;
         }
         let name = sanitize_name(file.name());
-        let data = read_budgeted(&mut file, budget)?;
+        let data = read_budgeted(&mut file, Some(budget))?;
         if is_archive(&data) {
             return Err(UnpackError::NestedArchive);
         }
@@ -250,22 +270,29 @@ fn unpack_zip(bytes: &[u8], budget: &mut Budget) -> Result<Vec<UnpackedItem>, Un
     Ok(expand_sorted(entries))
 }
 
-fn unpack_tar_bytes(bytes: &[u8], budget: &mut Budget) -> Result<Vec<UnpackedItem>, UnpackError> {
+fn unpack_tar_bytes(
+    bytes: &[u8],
+    budget: &mut LoadBudget,
+    charge_bytes: bool,
+) -> Result<Vec<UnpackedItem>, UnpackError> {
     let mut archive = tar::Archive::new(Cursor::new(bytes));
     let mut entries = Vec::new();
-    let mut count: usize = 0;
     for entry in archive.entries().map_err(UnpackError::Io)? {
         let mut entry = entry.map_err(UnpackError::Io)?;
-        count += 1;
-        if count > MAX_ENTRIES {
-            return Err(UnpackError::TooManyEntries);
-        }
+        budget.consume_entries(1)?;
         if entry.header().entry_type().is_dir() {
             continue;
         }
         let path = entry.path().map_err(UnpackError::Io)?;
         let name = sanitize_name(&path.to_string_lossy());
-        let data = read_budgeted(&mut entry, budget)?;
+        let data = read_budgeted(
+            &mut entry,
+            if charge_bytes {
+                Some(&mut *budget)
+            } else {
+                None
+            },
+        )?;
         if is_archive(&data) {
             return Err(UnpackError::NestedArchive);
         }
@@ -277,28 +304,36 @@ fn unpack_tar_bytes(bytes: &[u8], budget: &mut Budget) -> Result<Vec<UnpackedIte
 fn unpack_gzip(
     name: &str,
     bytes: &[u8],
-    budget: &mut Budget,
+    budget: &mut LoadBudget,
 ) -> Result<Vec<UnpackedItem>, UnpackError> {
     let decoder = flate2::read::GzDecoder::new(bytes);
-    let data = read_budgeted(decoder, budget)?;
+    let data = read_budgeted(decoder, Some(budget))?;
     match sniff(&data) {
-        Container::Tar => unpack_tar_bytes(&data, budget),
+        Container::Tar => unpack_tar_bytes(&data, budget, false),
         Container::Zip | Container::Gzip => Err(UnpackError::NestedArchive),
-        Container::Plain => Ok(expand_entry(name, &data)),
+        Container::Plain => {
+            budget.consume_entries(1)?;
+            Ok(expand_entry(name, &data))
+        }
     }
 }
 
-/// Unpacks one dropped or chosen file, named `name`, into labeled text
-/// items. Sniffs `bytes` by magic bytes to decide whether it's an
-/// archive; a non-archive is expanded on its own as a single "entry"
-/// named `name`.
-pub fn unpack(name: &str, bytes: &[u8]) -> Result<Vec<UnpackedItem>, UnpackError> {
-    let mut budget = Budget::new();
+/// Unpacks one dropped or chosen file using limits shared by its load
+/// operation. Sniffs `bytes` by magic bytes to decide whether it's an archive;
+/// a non-archive is expanded on its own as a single item named `name`.
+pub(crate) fn unpack(
+    name: &str,
+    bytes: &[u8],
+    budget: &mut LoadBudget,
+) -> Result<Vec<UnpackedItem>, UnpackError> {
     match sniff(bytes) {
-        Container::Zip => unpack_zip(bytes, &mut budget),
-        Container::Gzip => unpack_gzip(name, bytes, &mut budget),
-        Container::Tar => unpack_tar_bytes(bytes, &mut budget),
-        Container::Plain => Ok(expand_entry(name, bytes)),
+        Container::Zip => unpack_zip(bytes, budget),
+        Container::Gzip => unpack_gzip(name, bytes, budget),
+        Container::Tar => unpack_tar_bytes(bytes, budget, true),
+        Container::Plain => {
+            budget.consume_bytes(bytes.len() as u64)?;
+            Ok(expand_entry(name, bytes))
+        }
     }
 }
 
@@ -320,6 +355,10 @@ mod tests {
     const PSBT_SIGNED: &[u8] = include_bytes!("../tests/fixtures/psbt_signed.psbt");
     const PSBT_SIGNED_BASE64: &str = include_str!("../tests/fixtures/psbt_signed.base64");
 
+    fn unpack_file(name: &str, bytes: &[u8]) -> Result<Vec<UnpackedItem>, UnpackError> {
+        unpack(name, bytes, &mut LoadBudget::new())
+    }
+
     /// `sample.{tar,tar.gz,zip}` all hold the same three entries —
     /// `charlie.txt`, `alpha.txt`, `bravo.txt`, in that (non-lexicographic)
     /// insertion order — so the expected result is identical: three items
@@ -336,25 +375,25 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn tar_entries_sorted_lexicographically() {
-        let items = unpack("sample.tar", SAMPLE_TAR).unwrap();
+        let items = unpack_file("sample.tar", SAMPLE_TAR).unwrap();
         assert_three_in_lex_order(&items);
     }
 
     #[wasm_bindgen_test]
     fn tar_gz_entries_sorted_lexicographically() {
-        let items = unpack("sample.tar.gz", SAMPLE_TAR_GZ).unwrap();
+        let items = unpack_file("sample.tar.gz", SAMPLE_TAR_GZ).unwrap();
         assert_three_in_lex_order(&items);
     }
 
     #[wasm_bindgen_test]
     fn zip_entries_sorted_lexicographically() {
-        let items = unpack("sample.zip", SAMPLE_ZIP).unwrap();
+        let items = unpack_file("sample.zip", SAMPLE_ZIP).unwrap();
         assert_three_in_lex_order(&items);
     }
 
     #[wasm_bindgen_test]
     fn text_file_splits_per_line_skipping_blanks_and_comments() {
-        let items = unpack("multiline.txt", MULTILINE_TXT).unwrap();
+        let items = unpack_file("multiline.txt", MULTILINE_TXT).unwrap();
         assert_eq!(items.len(), 2);
         assert_eq!(items[0].text, "first-line");
         assert_eq!(items[1].text, "second-line");
@@ -363,32 +402,69 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn binary_psbt_entry_becomes_base64_item() {
-        let items = unpack("psbt_signed.psbt", PSBT_SIGNED).unwrap();
+        let items = unpack_file("psbt_signed.psbt", PSBT_SIGNED).unwrap();
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].text, PSBT_SIGNED_BASE64.trim());
     }
 
     #[wasm_bindgen_test]
     fn archive_with_too_many_entries_is_refused() {
-        let err = unpack("many_entries.tar", MANY_ENTRIES_TAR).unwrap_err();
+        let err = unpack_file("many_entries.tar", MANY_ENTRIES_TAR).unwrap_err();
         assert!(matches!(err, UnpackError::TooManyEntries));
     }
 
     #[wasm_bindgen_test]
     fn entry_exceeding_the_decompression_budget_is_refused() {
-        let err = unpack("huge.gz", HUGE_GZ).unwrap_err();
+        let err = unpack_file("huge.gz", HUGE_GZ).unwrap_err();
         assert!(matches!(err, UnpackError::BudgetExceeded));
     }
 
     #[wasm_bindgen_test]
+    fn tar_gz_content_is_charged_once() {
+        let mut decoder = flate2::read::GzDecoder::new(SAMPLE_TAR_GZ);
+        let mut tar_bytes = Vec::new();
+        decoder.read_to_end(&mut tar_bytes).unwrap();
+        let mut budget = LoadBudget::with_limits(tar_bytes.len() as u64, MAX_ENTRIES);
+
+        let items = unpack_gzip("sample.tar.gz", SAMPLE_TAR_GZ, &mut budget).unwrap();
+
+        assert_three_in_lex_order(&items);
+        assert_eq!(budget.remaining_bytes, 0);
+    }
+
+    #[wasm_bindgen_test]
+    fn two_archives_share_decompressed_byte_budget() {
+        let mut archive = zip::ZipArchive::new(Cursor::new(SAMPLE_ZIP)).unwrap();
+        let unpacked_bytes = (0..archive.len())
+            .map(|i| archive.by_index(i).unwrap().size())
+            .sum::<u64>();
+        let mut budget = LoadBudget::with_limits(unpacked_bytes * 2 - 1, MAX_ENTRIES);
+
+        unpack("first.zip", SAMPLE_ZIP, &mut budget).unwrap();
+        let err = unpack("second.zip", SAMPLE_ZIP, &mut budget).unwrap_err();
+
+        assert!(matches!(err, UnpackError::BudgetExceeded));
+    }
+
+    #[wasm_bindgen_test]
+    fn two_archives_share_entry_limit() {
+        let mut budget = LoadBudget::with_limits(DECOMPRESSION_BUDGET_BYTES, 5);
+
+        unpack("first.zip", SAMPLE_ZIP, &mut budget).unwrap();
+        let err = unpack("second.zip", SAMPLE_ZIP, &mut budget).unwrap_err();
+
+        assert!(matches!(err, UnpackError::TooManyEntries));
+    }
+
+    #[wasm_bindgen_test]
     fn nested_archive_is_refused() {
-        let err = unpack("nested.tar", NESTED_TAR).unwrap_err();
+        let err = unpack_file("nested.tar", NESTED_TAR).unwrap_err();
         assert!(matches!(err, UnpackError::NestedArchive));
     }
 
     #[wasm_bindgen_test]
     fn tar_entry_with_traversal_name_is_sanitized() {
-        let items = unpack("traversal.tar", TRAVERSAL_TAR).unwrap();
+        let items = unpack_file("traversal.tar", TRAVERSAL_TAR).unwrap();
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].label, "etc/passwd");
         assert!(!items[0].label.contains(".."));
@@ -396,7 +472,7 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn plain_file_is_a_single_entry() {
-        let items = unpack("tx.hex", b"not a recognised anything").unwrap();
+        let items = unpack_file("tx.hex", b"not a recognised anything").unwrap();
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].label, "tx.hex");
         assert_eq!(items[0].text, "not a recognised anything");

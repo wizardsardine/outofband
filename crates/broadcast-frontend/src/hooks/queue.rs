@@ -196,9 +196,10 @@ pub fn use_queue() -> QueueHandle {
             let mut id = *next_id;
             let mut queued = Vec::new();
             let mut refused = Vec::new();
+            let mut budget = unpack::LoadBudget::new();
 
             for (name, bytes) in &files {
-                match unpack::unpack(name, bytes) {
+                match unpack::unpack(name, bytes, &mut budget) {
                     Ok(unpacked) => {
                         let origin = if unpack::is_archive(bytes) {
                             format!("extracted from {name}")
