@@ -3,6 +3,8 @@ use std::rc::Rc;
 use gloo_timers::future::TimeoutFuture;
 use yew::prelude::*;
 
+use crate::hooks::file_load::LoadedFile;
+
 use crate::hooks::broadcast::{self, SubmitOutcome};
 use crate::queue::{
     self, AnalyzeOutcome, NoteCard, NoteKind, QueueItem, QueueItemBody, SubmissionState,
@@ -35,7 +37,7 @@ pub struct QueueHandle {
     pub on_retry: Callback<u64>,
     /// Fed `(name, bytes)` pairs, already ordered lexicographically by
     /// name, by `use_file_load`. Unpacks and analyzes each in turn.
-    pub on_files_loaded: Callback<Vec<(String, Vec<u8>)>>,
+    pub on_files_loaded: Callback<Vec<LoadedFile>>,
 }
 
 /// Wraps the queue so it can be mutated via [`Reducible`] dispatch rather
@@ -190,46 +192,29 @@ pub fn use_queue() -> QueueHandle {
 
     let on_files_loaded = {
         let items = items.clone();
-        let next_id = next_id.clone();
         let refused_psbts = refused_psbts.clone();
-        Callback::from(move |files: Vec<(String, Vec<u8>)>| {
-            let mut id = *next_id;
+        Callback::from(move |files: Vec<LoadedFile>| {
             let mut queued = Vec::new();
             let mut refused = Vec::new();
             let mut budget = unpack::LoadBudget::new();
 
-            for (name, bytes) in &files {
-                match unpack::unpack(name, bytes, &mut budget) {
-                    Ok(unpacked) => {
-                        let origin = if unpack::is_archive(bytes) {
-                            format!("extracted from {name}")
-                        } else {
-                            "dropped file".to_string()
-                        };
-                        for item in unpacked {
-                            match queue::analyze(id, item.label, origin.clone(), &item.text) {
-                                AnalyzeOutcome::Queued(queue_item) => queued.push(queue_item),
-                                AnalyzeOutcome::UnfinalizablePsbt { name, reason } => {
-                                        refused.push((name, reason))
-                                    }
-                            }
-                            id += 1;
-                        }
+            for file in files {
+                match file {
+                    LoadedFile::Loaded { name, bytes } => {
+                        analyze_loaded_file(name, &bytes, &mut budget, &mut queued, &mut refused);
                     }
-                    Err(err) => {
-                        queued.push(queue::unreadable_file(
-                            id,
-                            name.clone(),
-                            "dropped file".to_string(),
-                            err.to_string(),
-                        ));
-                        id += 1;
-                    }
+                    LoadedFile::Failed { name, error } => queued.push(queue::unreadable_file(
+                        0,
+                        name,
+                        "dropped file".to_string(),
+                        error,
+                    )),
                 }
             }
 
-            next_id.set(id);
-            refused_psbts.set(refused);
+            if !refused.is_empty() {
+                refused_psbts.dispatch(RefusedAction::Extend(refused));
+            }
 
             if !queued.is_empty() {
                 items.dispatch(QueueAction::Extend(queued));
@@ -298,6 +283,38 @@ pub fn use_queue() -> QueueHandle {
 
 /// Whether the run should keep going to the next queued id, or stop where
 /// it is because the current one needs the user's attention.
+fn analyze_loaded_file(
+    name: String,
+    bytes: &[u8],
+    budget: &mut unpack::LoadBudget,
+    queued: &mut Vec<QueueItem>,
+    refused: &mut Vec<(String, String)>,
+) {
+    match unpack::unpack(&name, bytes, budget) {
+        Ok(unpacked) => {
+            let origin = if unpack::is_archive(bytes) {
+                format!("extracted from {name}")
+            } else {
+                "dropped file".to_string()
+            };
+            for item in unpacked {
+                match queue::analyze(0, item.label, origin.clone(), &item.text) {
+                    AnalyzeOutcome::Queued(queue_item) => queued.push(*queue_item),
+                    AnalyzeOutcome::UnfinalizablePsbt { name, reason } => {
+                        refused.push((name, reason));
+                    }
+                }
+            }
+        }
+        Err(err) => queued.push(queue::unreadable_file(
+            0,
+            name,
+            "dropped file".to_string(),
+            err.to_string(),
+        )),
+    }
+}
+
 enum RunOutcome {
     Continue,
     Paused,
