@@ -24,6 +24,16 @@ button { transition: all .2s ease-in-out; }
   color: #000;
   border-color: transparent;
 }
+
+/* Pressed. Must follow the hover rule to win while the pointer is held. */
+.primary-btn:active:not(:disabled) {
+  background: linear-gradient(231.49deg, #61ffe1 32.13%, #5572f5 69.65%, #a341ff 103.41%);
+  color: #000;
+  border-color: transparent;
+  filter: brightness(.82);
+  transform: translateY(1px);
+  transition-duration: 0s;
+}
 .remove-btn:hover:not(:disabled) { color: #ef445f; }
 
 @keyframes wspulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }

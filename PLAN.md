@@ -640,9 +640,15 @@ the split headline uses the teal range
 Primary buttons ("Add to queue", "Send batch") are teal-on-black
 outlines that on hover **fill with the gradient**
 (`linear-gradient(231.49deg, #61ffe1 32.13%, #5572f5 69.65%, #a341ff
-103.41%)`, `color:#000`, transparent border) — not a color swap; the
-disabled state is `#0c0c0c` on `#1f1f1f` with `#4a4a4a` text and
-`cursor:not-allowed`. All transitions are `.2s ease-in-out`.
+103.41%)`, `color:#000`, transparent border) — not a color swap. Pressed
+keeps that fill but adds `filter:brightness(.82)` and
+`transform:translateY(1px)` with the transition suppressed, so a click
+registers instantly instead of easing; the rule must follow the hover rule
+to win while the pointer is held. The disabled state is `#0c0c0c` on
+`#1f1f1f` with `#4a4a4a` text and `cursor:not-allowed`. All other
+transitions are `.2s ease-in-out`. Each queue row's own send control uses
+the same three states at row scale (11px, `6px 12px` padding), bordered
+rather than bare text so it reads as something to press.
 
 Typography: IBM Plex Sans for prose/UI, IBM Plex Mono for all numbers,
 hashes, labels and chips — both bundled locally as woff2 via trunk assets,

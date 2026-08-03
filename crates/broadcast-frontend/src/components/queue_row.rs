@@ -3,9 +3,9 @@ use yew::prelude::*;
 
 use crate::queue::{self, NoteCard, QueueItem, QueueItemBody, RowStatusView, SubmissionState};
 use crate::tokens::{
-    ACCENT_TEAL_BRIGHT, BLOCK_EXPLORER_TX_URL, BODY_COPY, BORDER_STRONG, CARD_NESTED, FIELD_TEXT,
-    HAIRLINE, QUEUE_ROW_COLUMNS, SURFACE_ACCEPTED, TEXT_DISABLED, TEXT_MUTED_6A, TEXT_PRIMARY,
-    TEXT_SECONDARY,
+    ACCENT_TEAL, ACCENT_TEAL_BRIGHT, BLOCK_EXPLORER_TX_URL, BODY_COPY, BORDER_STRONG, CARD_NESTED,
+    FIELD_TEXT, HAIRLINE, QUEUE_ROW_COLUMNS, RULE, SURFACE_ACCEPTED, TEXT_DISABLED, TEXT_MUTED_6A,
+    TEXT_PRIMARY, TEXT_SECONDARY,
 };
 
 #[derive(Properties, PartialEq)]
@@ -130,20 +130,23 @@ fn send_button(
         <button
             {onclick}
             disabled={broadcasting}
-            style={retry_button_style(broadcasting)}
+            style={send_button_style(broadcasting)}
+            class="primary-btn"
         >{label}</button>
     }
 }
 
-fn retry_button_style(disabled: bool) -> String {
-    let color = if disabled {
-        TEXT_DISABLED
+/// The row's own send control. Same shape as the main send button, scaled
+/// to sit inside a row: bordered rather than bare text, so it reads as
+/// something to press.
+fn send_button_style(disabled: bool) -> String {
+    let (border, color, background, cursor) = if disabled {
+        (RULE, TEXT_DISABLED, "#0c0c0c", "not-allowed")
     } else {
-        ACCENT_TEAL_BRIGHT
+        (ACCENT_TEAL, ACCENT_TEAL, "#000", "pointer")
     };
-    let cursor = if disabled { "not-allowed" } else { "pointer" };
     format!(
-        "border:0;background:none;font-family:inherit;font-size:11px;font-weight:500;letter-spacing:.4px;text-transform:uppercase;color:{color};cursor:{cursor};padding:0"
+        "border:1px solid {border};border-radius:2px;background:{background};font-family:inherit;font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:{color};cursor:{cursor};padding:6px 12px"
     )
 }
 
