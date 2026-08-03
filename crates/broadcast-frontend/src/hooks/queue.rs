@@ -3,12 +3,17 @@ use std::rc::Rc;
 use gloo_timers::future::TimeoutFuture;
 use yew::prelude::*;
 
-use crate::hooks::broadcast::{self, SubmitOutcome};
 use crate::hooks::file_load::LoadedFile;
 use crate::queue::{
     self, AnalyzeOutcome, NoteCard, NoteKind, QueueItem, QueueItemBody, SubmissionState,
 };
+use crate::slipstream::{self, SubmitOutcome};
 use crate::unpack;
+
+/// Shown once Slipstream has answered 429 past every retry: the browser, not
+/// the transaction, is what upstream is refusing.
+const RATE_LIMIT_EXHAUSTED: &str =
+    "Slipstream is rate limiting this browser. Wait a few minutes and press Broadcast again.";
 
 /// The whole load-and-queue state: the paste box's text, the queued
 /// items, and the callbacks that mutate them. Centralized here so
@@ -363,8 +368,9 @@ enum RunOutcome {
 
 /// Submits every id in `ids`, strictly sequentially and awaited one at a
 /// time — never `join_all`, never staggered. A 429 pauses just this one
-/// item with a visible countdown and retries it in place; a network
-/// failure pauses the whole run so it never silently skips an item.
+/// item with a visible countdown and retries it in place; a failed request,
+/// or a 429 that outlasts the retries, pauses the whole run so it never
+/// silently skips an item.
 ///
 /// Every submission-state update goes through `items.dispatch`, which Yew
 /// applies against whatever the queue's live state is at that moment —
@@ -403,17 +409,19 @@ fn submittable_tx_hex(items: &[QueueItem], id: u64) -> Option<String> {
     }
 }
 
-/// One item's full submission, including transparently retrying past any
-/// number of 429s. Returns once the item has a terminal outcome (accepted
-/// or rejected) or the run needs to pause on a network failure.
+/// One item's full submission, retrying a 429 for as long as
+/// [`slipstream::retry_delay`] allows. Returns once the item has a terminal
+/// outcome (accepted or rejected) or the run needs to pause, either on a
+/// failed request or once the rate-limit retries are spent.
 async fn submit_with_rate_limit_retry(
     items: &UseReducerHandle<QueueState>,
     id: u64,
     tx_hex: &str,
 ) -> RunOutcome {
+    let mut attempt = 0;
     loop {
         set_submission(items, id, SubmissionState::Sending, NoteUpdate::Unchanged);
-        match broadcast::submit_tx(tx_hex).await {
+        match slipstream::submit_tx(tx_hex).await {
             SubmitOutcome::Accepted => {
                 // Clears any leftover rate-limit countdown note from a
                 // 429 this same item recovered from.
@@ -433,32 +441,40 @@ async fn submit_with_rate_limit_retry(
                 );
                 return RunOutcome::Continue;
             }
-            SubmitOutcome::Failed(message) => {
-                let note = NoteCard {
-                    kind: NoteKind::Error,
-                    text: message.clone(),
+            SubmitOutcome::Failed(message) => return fail_and_pause(items, id, message),
+            SubmitOutcome::RateLimited(suggested) => {
+                let Some(delay_secs) = slipstream::retry_delay(attempt, suggested) else {
+                    return fail_and_pause(items, id, RATE_LIMIT_EXHAUSTED.to_string());
                 };
-                set_submission(
-                    items,
-                    id,
-                    SubmissionState::Failed(message),
-                    NoteUpdate::Set(note),
-                );
-                return RunOutcome::Paused;
-            }
-            SubmitOutcome::RateLimited(retry_after_secs) => {
-                count_down_and_wait(items, id, retry_after_secs).await;
-                // Loop back and retry the same item — a 429 means nothing
-                // was ever attempted against Slipstream for it.
+                attempt += 1;
+                count_down_and_wait(items, id, delay_secs).await;
+                // Loop back and retry the same item: a 429 means nothing was
+                // ever attempted against Slipstream for it.
             }
         }
     }
 }
 
+/// Marks the row failed with its reason and stops the run there, so it never
+/// silently skips past an item the user has to look at.
+fn fail_and_pause(items: &UseReducerHandle<QueueState>, id: u64, message: String) -> RunOutcome {
+    let note = NoteCard {
+        kind: NoteKind::Error,
+        text: message.clone(),
+    };
+    set_submission(
+        items,
+        id,
+        SubmissionState::Failed(message),
+        NoteUpdate::Set(note),
+    );
+    RunOutcome::Paused
+}
+
 /// Marks the row `Rate limited` with a countdown note that ticks once per
 /// second, so the pause is visible rather than a silent stall.
-async fn count_down_and_wait(items: &UseReducerHandle<QueueState>, id: u64, retry_after_secs: u64) {
-    let mut remaining = retry_after_secs;
+async fn count_down_and_wait(items: &UseReducerHandle<QueueState>, id: u64, delay_secs: u64) {
+    let mut remaining = delay_secs;
     loop {
         let text = if remaining == 0 {
             "Rate limited — retrying now…".to_string()
