@@ -1,16 +1,5 @@
 [build]
 filehash = false
 
-# Keep the development proxy on loopback because the backend trusts proxy
-# headers from local peers.
 [serve]
 addresses = ["127.0.0.1"]
-
-[[proxy]]
-backend = "http://127.0.0.1:3010/fee"
-
-[[proxy]]
-backend = "http://127.0.0.1:3010/broadcast"
-
-[[proxy]]
-backend = "http://127.0.0.1:3010/health"
