@@ -1,6 +1,7 @@
 use yew::prelude::*;
 
-use crate::queue::{self, QueueItem};
+use crate::queue::{self, AnalyzeOutcome, QueueItem};
+use crate::unpack;
 
 /// The whole load-and-queue state: the paste box's text, the queued
 /// items, and the callbacks that mutate them. Centralized here so
@@ -11,11 +12,20 @@ pub struct QueueHandle {
     pub raw_text: String,
     pub parse_error: Option<String>,
     pub broadcasting: bool,
+    /// PSBTs refused by the current load operation because they cannot be
+    /// finalized: (name, incomplete-input count). Non-empty opens the
+    /// finalization modal; a fresh load operation replaces this list
+    /// rather than appending to it.
+    pub refused_psbts: Vec<(String, usize)>,
     pub on_raw_text: Callback<String>,
     pub on_submit: Callback<()>,
     pub on_clear: Callback<()>,
     pub on_remove: Callback<u64>,
     pub on_set_total: Callback<(u64, Option<u64>)>,
+    pub on_dismiss_refused: Callback<()>,
+    /// Fed `(name, bytes)` pairs, already ordered lexicographically by
+    /// name, by `use_file_load`. Unpacks and analyzes each in turn.
+    pub on_files_loaded: Callback<Vec<(String, Vec<u8>)>>,
 }
 
 #[hook]
@@ -25,6 +35,7 @@ pub fn use_queue() -> QueueHandle {
     let raw_text = use_state(String::new);
     let parse_error = use_state(|| None::<String>);
     let broadcasting = use_state(|| false);
+    let refused_psbts = use_state(Vec::<(String, usize)>::new);
 
     let on_raw_text = {
         let raw_text = raw_text.clone();
@@ -40,6 +51,7 @@ pub fn use_queue() -> QueueHandle {
         let items = items.clone();
         let next_id = next_id.clone();
         let parse_error = parse_error.clone();
+        let refused_psbts = refused_psbts.clone();
         Callback::from(move |()| {
             let lines = tx_core::split_lines(&raw_text);
             if let Some(refusal) = queue::paste_gate(&lines).refusal() {
@@ -47,34 +59,40 @@ pub fn use_queue() -> QueueHandle {
                 return;
             }
             let mut id = *next_id;
-            let mut added = Vec::with_capacity(lines.len());
+            let mut queued = Vec::with_capacity(lines.len());
+            let mut refused = Vec::new();
             for line in &lines {
-                added.push(queue::analyze(
-                    id,
-                    queue::short_name(line),
-                    "pasted".to_string(),
-                    line,
-                ));
+                match queue::analyze(id, queue::short_name(line), "pasted".to_string(), line) {
+                    AnalyzeOutcome::Queued(item) => queued.push(item),
+                    AnalyzeOutcome::UnfinalizablePsbt {
+                        name,
+                        incomplete_inputs,
+                    } => refused.push((name, incomplete_inputs)),
+                }
                 id += 1;
             }
 
             // A lone pasted entry that failed to decode renders inline instead
-            // of entering the queue as an `Invalid` row. Not made dead by the
-            // gate above: the gate only sniffs, so this still catches an entry
-            // that sniffs and then fails to decode, such as an oversized hex or
-            // a malformed body behind a valid PSBT magic.
-            if added.len() == 1 && added[0].is_invalid() {
-                let error = added[0].note.as_ref().map(|note| note.text.clone());
+            // of entering the queue as an `Invalid` row. A lone unfinalizable
+            // PSBT is a different case entirely, it opens the modal below,
+            // never `parse_error`. Not made dead by the gate above: the
+            // gate only sniffs, so this still catches an entry that sniffs
+            // and then fails to decode, such as an oversized hex.
+            if refused.is_empty() && queued.len() == 1 && queued[0].is_invalid() {
+                let error = queued[0].note.as_ref().map(|note| note.text.clone());
                 parse_error.set(error);
                 return;
             }
 
             next_id.set(id);
             parse_error.set(None);
+            refused_psbts.set(refused);
 
-            let mut updated = (*items).clone();
-            updated.extend(added);
-            items.set(updated);
+            if !queued.is_empty() {
+                let mut updated = (*items).clone();
+                updated.extend(queued);
+                items.set(updated);
+            }
 
             raw_text.set(String::new());
         })
@@ -120,13 +138,72 @@ pub fn use_queue() -> QueueHandle {
         })
     };
 
+    let on_dismiss_refused = {
+        let refused_psbts = refused_psbts.clone();
+        Callback::from(move |()| refused_psbts.set(Vec::new()))
+    };
+
+    let on_files_loaded = {
+        let items = items.clone();
+        let next_id = next_id.clone();
+        let refused_psbts = refused_psbts.clone();
+        Callback::from(move |files: Vec<(String, Vec<u8>)>| {
+            let mut id = *next_id;
+            let mut queued = Vec::new();
+            let mut refused = Vec::new();
+
+            for (name, bytes) in &files {
+                match unpack::unpack(name, bytes) {
+                    Ok(unpacked) => {
+                        let origin = if unpack::is_archive(bytes) {
+                            format!("extracted from {name}")
+                        } else {
+                            "dropped file".to_string()
+                        };
+                        for item in unpacked {
+                            match queue::analyze(id, item.label, origin.clone(), &item.text) {
+                                AnalyzeOutcome::Queued(queue_item) => queued.push(queue_item),
+                                AnalyzeOutcome::UnfinalizablePsbt {
+                                    name,
+                                    incomplete_inputs,
+                                } => refused.push((name, incomplete_inputs)),
+                            }
+                            id += 1;
+                        }
+                    }
+                    Err(err) => {
+                        queued.push(queue::unreadable_file(
+                            id,
+                            name.clone(),
+                            "dropped file".to_string(),
+                            err.to_string(),
+                        ));
+                        id += 1;
+                    }
+                }
+            }
+
+            next_id.set(id);
+            refused_psbts.set(refused);
+
+            if !queued.is_empty() {
+                let mut updated = (*items).clone();
+                updated.extend(queued);
+                items.set(updated);
+            }
+        })
+    };
+
     QueueHandle {
         items: (*items).clone(),
         raw_text: (*raw_text).clone(),
         parse_error: (*parse_error).clone(),
         broadcasting: *broadcasting,
+        refused_psbts: (*refused_psbts).clone(),
         on_raw_text,
         on_submit,
+        on_dismiss_refused,
+        on_files_loaded,
         on_clear,
         on_remove,
         on_set_total,

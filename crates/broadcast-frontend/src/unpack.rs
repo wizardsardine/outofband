@@ -5,10 +5,6 @@
 //! (PLAN.md section 5 and 7). A dropped file affects only the tab of the
 //! person who dropped it, and even there extraction streams against a
 //! fixed budget, caps entry counts, and refuses nested archives.
-//!
-//! Not wired into the drag-drop/picker UI yet (that's a later phase), so
-//! nothing here is called outside its own tests.
-#![allow(dead_code)]
 
 use core::fmt;
 use std::io::{self, Cursor, Read};
@@ -226,7 +222,10 @@ fn expand_sorted(mut entries: Vec<(String, Vec<u8>)>) -> Vec<UnpackedItem> {
         .collect()
 }
 
-fn is_archive(data: &[u8]) -> bool {
+/// Whether `data` sniffs as a zip, gzip or tar container — used by the
+/// caller to label a queued item's origin (`extracted from <name>` versus
+/// `dropped file`) without re-deriving the detection logic.
+pub fn is_archive(data: &[u8]) -> bool {
     sniff(data) != Container::Plain
 }
 

@@ -1,12 +1,18 @@
-use web_sys::HtmlTextAreaElement;
+use wasm_bindgen::JsCast;
+use wasm_bindgen::closure::Closure;
+use web_sys::{DragEvent, HtmlInputElement, HtmlTextAreaElement};
 use yew::prelude::*;
 
 use crate::tokens::{
-    self, BORDER_STRONG, CARD_NESTED, FIELD_TEXT, NOTE_CARD_ERROR, SURFACE_PARSE_ERROR,
-    TEXT_MUTED_6A, TEXT_MUTED_7B, TEXT_SECONDARY,
+    self, ACCENT_TEAL, BORDER_STRONG, CARD_NESTED, FIELD_TEXT, NOTE_CARD_ERROR, SURFACE_DRAG_OVER,
+    SURFACE_PARSE_ERROR, TEXT_MUTED_6A, TEXT_MUTED_7B, TEXT_SECONDARY,
 };
 
 const PLACEHOLDER: &str = "cHNidP8BAHECAAAAAf8Zj1...\n\nor\n\n02000000000101ef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a...\n\nor drop a file here";
+
+/// Advertises the accepted extensions in the file picker; detection itself
+/// is always by content, never by what the picker filtered on.
+const FILE_ACCEPT: &str = ".txt,.psbt,.txn,.hex,.raw,.tar,.gz,.tgz,.zip";
 
 #[derive(Properties, PartialEq)]
 pub struct PasteBoxProps {
@@ -16,6 +22,7 @@ pub struct PasteBoxProps {
     pub parse_error: Option<String>,
     pub on_submit: Callback<()>,
     pub on_clear: Callback<()>,
+    pub on_files: Callback<web_sys::FileList>,
 }
 
 #[function_component(PasteBox)]
@@ -25,6 +32,82 @@ pub fn paste_box(props: &PasteBoxProps) -> Html {
     let lines = tx_core::split_lines(&props.raw_text);
     let can_queue = crate::queue::paste_gate(&lines).allows_queueing();
     let detected = crate::queue::detected_label(&lines);
+
+    let file_input_ref = use_node_ref();
+    let drag_over = use_state(|| false);
+
+    // Window-level, not just the textarea's: a file dropped anywhere on the
+    // page must never navigate the tab away, and the page at large is a
+    // drop target per PLAN.md section 5.
+    {
+        let on_files = props.on_files.clone();
+        let drag_over = drag_over.clone();
+        use_effect_with((), move |()| {
+            let Some(window) = web_sys::window() else {
+                return Box::new(|| ()) as Box<dyn FnOnce()>;
+            };
+
+            let dragover_listener = {
+                let drag_over = drag_over.clone();
+                Closure::<dyn Fn(web_sys::Event)>::new(move |event: web_sys::Event| {
+                    event.prevent_default();
+                    if !*drag_over {
+                        drag_over.set(true);
+                    }
+                })
+            };
+            let dragleave_listener = {
+                let drag_over = drag_over.clone();
+                Closure::<dyn Fn(web_sys::Event)>::new(move |_event: web_sys::Event| {
+                    drag_over.set(false);
+                })
+            };
+            let drop_listener = {
+                let drag_over = drag_over.clone();
+                let on_files = on_files.clone();
+                Closure::<dyn Fn(web_sys::Event)>::new(move |event: web_sys::Event| {
+                    event.prevent_default();
+                    drag_over.set(false);
+                    let files = event
+                        .dyn_ref::<DragEvent>()
+                        .and_then(DragEvent::data_transfer)
+                        .and_then(|data_transfer| data_transfer.files());
+                    if let Some(files) = files {
+                        on_files.emit(files);
+                    }
+                })
+            };
+
+            let _ = window.add_event_listener_with_callback(
+                "dragover",
+                dragover_listener.as_ref().unchecked_ref(),
+            );
+            let _ = window.add_event_listener_with_callback(
+                "dragleave",
+                dragleave_listener.as_ref().unchecked_ref(),
+            );
+            let _ = window
+                .add_event_listener_with_callback("drop", drop_listener.as_ref().unchecked_ref());
+
+            Box::new(move || {
+                let _ = window.remove_event_listener_with_callback(
+                    "dragover",
+                    dragover_listener.as_ref().unchecked_ref(),
+                );
+                let _ = window.remove_event_listener_with_callback(
+                    "dragleave",
+                    dragleave_listener.as_ref().unchecked_ref(),
+                );
+                let _ = window.remove_event_listener_with_callback(
+                    "drop",
+                    drop_listener.as_ref().unchecked_ref(),
+                );
+                drop(dragover_listener);
+                drop(dragleave_listener);
+                drop(drop_listener);
+            }) as Box<dyn FnOnce()>
+        });
+    }
 
     let oninput = {
         let on_raw_text = props.on_raw_text.clone();
@@ -57,6 +140,30 @@ pub fn paste_box(props: &PasteBoxProps) -> Html {
         Callback::from(move |_| on_clear.emit(()))
     };
 
+    let onclick_choose_files = {
+        let file_input_ref = file_input_ref.clone();
+        Callback::from(move |_| {
+            if let Some(input) = file_input_ref.cast::<HtmlInputElement>() {
+                input.click();
+            }
+        })
+    };
+
+    let onchange_file_input = {
+        let on_files = props.on_files.clone();
+        let file_input_ref = file_input_ref.clone();
+        Callback::from(move |_: Event| {
+            let Some(input) = file_input_ref.cast::<HtmlInputElement>() else {
+                return;
+            };
+            if let Some(files) = input.files() {
+                on_files.emit(files);
+            }
+            // Reset so choosing the same file again still fires `onchange`.
+            input.set_value("");
+        })
+    };
+
     html! {
         <div style="padding:60px 0 0">
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:18px">
@@ -75,7 +182,15 @@ pub fn paste_box(props: &PasteBoxProps) -> Html {
                 {onkeydown}
                 spellcheck="false"
                 placeholder={PLACEHOLDER}
-                style={textarea_style()}
+                style={textarea_style(*drag_over)}
+            />
+            <input
+                type="file"
+                multiple={true}
+                accept={FILE_ACCEPT}
+                ref={file_input_ref}
+                onchange={onchange_file_input}
+                style="display:none"
             />
 
             <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:16px">
@@ -85,7 +200,7 @@ pub fn paste_box(props: &PasteBoxProps) -> Html {
                     class={if can_queue { "primary-btn" } else { "" }}
                     style={tokens::primary_button_style(can_queue, 30)}
                 >{"Add to queue"}</button>
-                <button style={choose_files_style()}>
+                <button onclick={onclick_choose_files} style={choose_files_style()}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 16V4"></path>
                         <path d="m7 9 5-5 5 5"></path>
@@ -119,9 +234,17 @@ fn parse_error_card(error: &str) -> Html {
     }
 }
 
-fn textarea_style() -> String {
+/// Solid teal border over a tinted background while a file is dragged over
+/// the page (not dashed — PLAN.md section 5 calls out the mockup's unused
+/// dashed `dropStyle` as a departure).
+fn textarea_style(drag_over: bool) -> String {
+    let (border, background) = if drag_over {
+        (ACCENT_TEAL, SURFACE_DRAG_OVER)
+    } else {
+        (BORDER_STRONG, CARD_NESTED)
+    };
     format!(
-        "width:100%;box-sizing:border-box;height:214px;resize:vertical;border-radius:2px;color:{FIELD_TEXT};font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.6;padding:18px 20px;word-break:break-all;border:1px solid {BORDER_STRONG};background:{CARD_NESTED}"
+        "width:100%;box-sizing:border-box;height:214px;resize:vertical;border-radius:2px;color:{FIELD_TEXT};font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.6;padding:18px 20px;word-break:break-all;border:1px solid {border};background:{background};transition:border-color .2s ease-in-out,background .2s ease-in-out"
     )
 }
 

@@ -1,9 +1,10 @@
 use yew::prelude::*;
 
 use crate::components::{
-    ContextBanner, DisclosureStrip, Faq, Footer, Hero, PasteBox, QueueTable, StatStrip,
+    ContextBanner, DisclosureStrip, Faq, FinalizationModal, Footer, Hero, PasteBox, QueueTable,
+    StatStrip,
 };
-use crate::hooks::{use_fee, use_mobile, use_queue};
+use crate::hooks::{use_fee, use_file_load, use_mobile, use_queue};
 
 #[function_component(App)]
 pub fn app() -> Html {
@@ -11,6 +12,7 @@ pub fn app() -> Html {
     let fee = use_fee();
     let queue = use_queue();
     let has_items = !queue.items.is_empty();
+    let on_files = use_file_load(queue.on_files_loaded.clone());
 
     html! {
         <div style="min-height:100vh;background:#000;color:#f4f4f4;font-family:'IBM Plex Sans',system-ui,sans-serif">
@@ -26,7 +28,14 @@ pub fn app() -> Html {
                         parse_error={queue.parse_error.clone()}
                         on_submit={queue.on_submit.clone()}
                         on_clear={queue.on_clear.clone()}
+                        on_files={on_files}
                     />
+                    if !queue.refused_psbts.is_empty() {
+                        <FinalizationModal
+                            refused={queue.refused_psbts.clone()}
+                            on_close={queue.on_dismiss_refused.clone()}
+                        />
+                    }
                     if has_items {
                         <div style="padding:44px 0 0">
                             <StatStrip

@@ -93,8 +93,46 @@ pub struct QueueItem {
     pub total_input_override: Option<u64>,
 }
 
+/// Mirrors `broadcast-api`'s `max_payload_bytes` default (PLAN.md section
+/// 4): the frontend never learns the server's actual configured value, so
+/// an item whose hex would guarantee a 413 is flagged the moment it is
+/// decoded rather than left to fail at broadcast time.
+const MAX_PAYLOAD_BYTES: usize = 1_048_576;
+
+/// `None` when `tx_hex` fits the payload cap; otherwise a displayable
+/// refusal reason.
+fn payload_cap_error(tx_hex: &str) -> Option<String> {
+    if tx_hex.len() <= MAX_PAYLOAD_BYTES {
+        return None;
+    }
+    Some(format!(
+        "Transaction is {} bytes as hex, over the {} MiB payload limit.",
+        format_thousands(tx_hex.len() as i128),
+        MAX_PAYLOAD_BYTES / (1024 * 1024)
+    ))
+}
+
+/// The result of analyzing one loaded entry (a pasted line, or an item
+/// expanded from a dropped file/archive). A PSBT that cannot be finalized
+/// never becomes a [`QueueItem`] — it must be refused via the finalization
+/// modal instead (PLAN.md section 1), so it gets its own variant rather
+/// than an `Invalid` row.
+pub enum AnalyzeOutcome {
+    Queued(QueueItem),
+    UnfinalizablePsbt {
+        name: String,
+        incomplete_inputs: usize,
+    },
+}
+
 impl QueueItem {
-    fn invalid(id: u64, name: String, origin: String, format: RowFormat, message: String) -> Self {
+    pub(crate) fn invalid(
+        id: u64,
+        name: String,
+        origin: String,
+        format: RowFormat,
+        message: String,
+    ) -> Self {
         QueueItem {
             id,
             name,
@@ -192,25 +230,39 @@ pub fn detected_label(lines: &[&str]) -> &'static str {
     }
 }
 
-/// Splits `text` (already one line from the paste box) into a queue item,
-/// entirely via `tx-core`.
-pub fn analyze(id: u64, name: String, origin: String, text: &str) -> QueueItem {
+/// An `Invalid` row for a dropped file or archive that could not be
+/// unpacked at all (too many entries, over the decompression budget,
+/// nested, or malformed) — distinct from a per-item decode failure, since
+/// `tx-core` never even sees this one.
+pub fn unreadable_file(id: u64, name: String, origin: String, message: String) -> QueueItem {
+    QueueItem::invalid(id, name, origin, RowFormat::Unknown, capitalize(&message))
+}
+
+/// Splits `text` (already one line from the paste box, or one item expanded
+/// from a file/archive) into an [`AnalyzeOutcome`], entirely via `tx-core`.
+pub fn analyze(id: u64, name: String, origin: String, text: &str) -> AnalyzeOutcome {
     let bytes = text.as_bytes();
     match tx_core::detect(bytes) {
-        None => QueueItem::invalid(
+        None => AnalyzeOutcome::Queued(QueueItem::invalid(
             id,
             name,
             origin,
             RowFormat::Unknown,
             UNRECOGNISED_MESSAGE.to_string(),
-        ),
+        )),
         Some(format) => {
             let row_format = row_format_for(format);
             match tx_core::decode_as(format, bytes) {
-                Err(err) => {
-                    QueueItem::invalid(id, name, origin, row_format, capitalize(&err.to_string()))
+                Err(err) => AnalyzeOutcome::Queued(QueueItem::invalid(
+                    id,
+                    name,
+                    origin,
+                    row_format,
+                    capitalize(&err.to_string()),
+                )),
+                Ok(Decoded::Transaction(tx)) => {
+                    AnalyzeOutcome::Queued(from_transaction(id, name, origin, tx))
                 }
-                Ok(Decoded::Transaction(tx)) => from_transaction(id, name, origin, tx),
                 Ok(Decoded::Psbt(psbt)) => from_psbt(id, name, origin, psbt),
             }
         }
@@ -225,6 +277,10 @@ fn row_format_for(format: Format) -> RowFormat {
 }
 
 fn from_transaction(id: u64, name: String, origin: String, tx: Transaction) -> QueueItem {
+    let tx_hex = tx_core::serialize_hex(&tx);
+    if let Some(message) = payload_cap_error(&tx_hex) {
+        return QueueItem::invalid(id, name, origin, RowFormat::RawTx, message);
+    }
     QueueItem {
         id,
         name,
@@ -233,7 +289,7 @@ fn from_transaction(id: u64, name: String, origin: String, tx: Transaction) -> Q
         body: QueueItemBody::Decoded {
             vsize: tx_core::vsize(&tx),
             txid: tx.compute_txid().to_string(),
-            tx_hex: tx_core::serialize_hex(&tx),
+            tx_hex,
             known_fee_sats: None,
             output_sum_sats: tx_core::output_sum(&tx),
         },
@@ -243,18 +299,25 @@ fn from_transaction(id: u64, name: String, origin: String, tx: Transaction) -> Q
     }
 }
 
-fn from_psbt(id: u64, name: String, origin: String, psbt: Psbt) -> QueueItem {
+fn from_psbt(id: u64, name: String, origin: String, psbt: Psbt) -> AnalyzeOutcome {
     let output_sum = tx_core::psbt_output_sum(&psbt);
     let fee = tx_core::psbt_fee(&psbt);
     match tx_core::finalize(psbt) {
-        Err(err) => QueueItem::invalid(
-            id,
+        Err(err) => AnalyzeOutcome::UnfinalizablePsbt {
             name,
-            origin,
-            RowFormat::Psbt,
-            capitalize(&err.to_string()),
-        ),
+            incomplete_inputs: err.incomplete_inputs,
+        },
         Ok(tx) => {
+            let tx_hex = tx_core::serialize_hex(&tx);
+            if let Some(message) = payload_cap_error(&tx_hex) {
+                return AnalyzeOutcome::Queued(QueueItem::invalid(
+                    id,
+                    name,
+                    origin,
+                    RowFormat::Psbt,
+                    message,
+                ));
+            }
             let (known_fee_sats, note) = match fee {
                 PsbtFee::Known { fee_sats } => (
                     Some(fee_sats),
@@ -281,7 +344,7 @@ fn from_psbt(id: u64, name: String, origin: String, psbt: Psbt) -> QueueItem {
                     }),
                 ),
             };
-            QueueItem {
+            AnalyzeOutcome::Queued(QueueItem {
                 id,
                 name,
                 origin,
@@ -289,14 +352,14 @@ fn from_psbt(id: u64, name: String, origin: String, psbt: Psbt) -> QueueItem {
                 body: QueueItemBody::Decoded {
                     vsize: tx_core::vsize(&tx),
                     txid: tx.compute_txid().to_string(),
-                    tx_hex: tx_core::serialize_hex(&tx),
+                    tx_hex,
                     known_fee_sats,
                     output_sum_sats: output_sum,
                 },
                 note,
                 submission: SubmissionState::Unsent,
                 total_input_override: None,
-            }
+            })
         }
     }
 }
@@ -546,9 +609,16 @@ mod tests {
         }
     }
 
+    fn analyze_queued(id: u64, name: &str, origin: &str, text: &str) -> QueueItem {
+        match analyze(id, name.to_string(), origin.to_string(), text) {
+            AnalyzeOutcome::Queued(item) => item,
+            AnalyzeOutcome::UnfinalizablePsbt { .. } => panic!("expected a queued row"),
+        }
+    }
+
     #[test]
     fn analyze_valid_raw_tx_hex_decodes() {
-        let item = analyze(1, "name".to_string(), "origin".to_string(), TX_HEX);
+        let item = analyze_queued(1, "name", "origin", TX_HEX);
         match item.body {
             QueueItemBody::Decoded {
                 vsize,
@@ -572,14 +642,60 @@ mod tests {
 
     #[test]
     fn analyze_garbage_is_invalid() {
-        let item = analyze(
-            1,
-            "name".to_string(),
-            "origin".to_string(),
-            "not a psbt or tx",
-        );
+        let item = analyze_queued(1, "name", "origin", "not a psbt or tx");
         assert!(item.is_invalid());
         assert!(matches!(item.format, RowFormat::Unknown));
+    }
+
+    /// A one-input PSBT with no witness/redeem data at all can never be
+    /// finalized, so `from_psbt` must refuse it via `UnfinalizablePsbt`
+    /// rather than queueing it as an `Invalid` row.
+    fn unsigned_psbt() -> Psbt {
+        use bitcoin::absolute::LockTime;
+        use bitcoin::transaction::Version;
+        use bitcoin::{OutPoint, ScriptBuf, Sequence, TxIn, Txid, Witness, hashes::Hash};
+
+        let tx = Transaction {
+            version: Version::TWO,
+            lock_time: LockTime::ZERO,
+            input: vec![TxIn {
+                previous_output: OutPoint::new(Txid::all_zeros(), 0),
+                script_sig: ScriptBuf::new(),
+                sequence: Sequence::MAX,
+                witness: Witness::new(),
+            }],
+            output: vec![],
+        };
+        Psbt::from_unsigned_tx(tx).expect("well-formed unsigned tx")
+    }
+
+    #[test]
+    fn from_psbt_missing_signatures_is_unfinalizable_not_invalid() {
+        let outcome = from_psbt(
+            1,
+            "unsigned.psbt".to_string(),
+            "pasted".to_string(),
+            unsigned_psbt(),
+        );
+        match outcome {
+            AnalyzeOutcome::UnfinalizablePsbt {
+                name,
+                incomplete_inputs,
+            } => {
+                assert_eq!(name, "unsigned.psbt");
+                assert_eq!(incomplete_inputs, 1);
+            }
+            AnalyzeOutcome::Queued(_) => panic!("expected the item to be refused, not queued"),
+        }
+    }
+
+    #[test]
+    fn payload_cap_error_flags_oversized_hex() {
+        let ok_hex = "00".repeat(1000);
+        assert!(payload_cap_error(&ok_hex).is_none());
+
+        let too_big_hex = "00".repeat(MAX_PAYLOAD_BYTES + 1);
+        assert!(payload_cap_error(&too_big_hex).is_some());
     }
 
     #[test]
@@ -694,7 +810,7 @@ mod tests {
 
     #[test]
     fn paste_gate_refusal_matches_the_invalid_row_note() {
-        let row = analyze(1, "name".to_string(), "origin".to_string(), "garbage");
+        let row = analyze_queued(1, "name", "origin", "garbage");
         let note = row.note.expect("garbage is noted on its row").text;
         assert_eq!(PasteGate::NothingRecognised.refusal(), Some(note.as_str()));
     }
