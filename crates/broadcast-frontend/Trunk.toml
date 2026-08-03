@@ -1,5 +1,8 @@
 [build]
 filehash = false
 
+# Reachable from the local network. Nothing sensitive is served: these are
+# the same static files a deploy publishes, and the page talks to MARA from
+# the browser rather than through anything running here.
 [serve]
-addresses = ["127.0.0.1"]
+addresses = ["0.0.0.0"]

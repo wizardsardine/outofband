@@ -10,9 +10,9 @@ test:
     cargo test
     cd crates/broadcast-frontend && wasm-pack test --headless --firefox
 
-# Serve the frontend on :8080 over plain HTTP: no nginx, no TLS, no
-# systemd, no root. It talks to MARA directly, so there is nothing else
-# to start.
+# Serve the frontend on :8080 over plain HTTP, reachable from the local
+# network: no nginx, no TLS, no systemd, no root. It talks to MARA
+# directly, so there is nothing else to start.
 run:
     cd crates/broadcast-frontend && trunk serve --open
 
