@@ -20,10 +20,9 @@ pub struct QueueHandle {
     pub raw_text: String,
     pub parse_error: Option<String>,
     pub broadcasting: bool,
-    /// PSBTs refused by the current load operation because they cannot be
-    /// finalized: (name, incomplete-input count). Non-empty opens the
-    /// finalization modal; a fresh load operation replaces this list
-    /// rather than appending to it.
+    /// Undismissed PSBTs refused because they cannot be finalized: (name,
+    /// reason). Non-empty opens the finalization modal; a later load
+    /// appends rather than replacing, so a refusal is never lost.
     pub refused_psbts: Vec<(String, String)>,
     pub on_raw_text: Callback<String>,
     pub on_submit: Callback<()>,
@@ -96,13 +95,34 @@ impl Reducible for QueueState {
 }
 
 #[hook]
+#[derive(Default, PartialEq)]
+struct RefusedState(Vec<(String, String)>);
+
+enum RefusedAction {
+    Extend(Vec<(String, String)>),
+    Clear,
+}
+
+impl Reducible for RefusedState {
+    type Action = RefusedAction;
+
+    fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
+        let mut refused = self.0.clone();
+        match action {
+            RefusedAction::Extend(new_refused) => refused.extend(new_refused),
+            RefusedAction::Clear => refused.clear(),
+        }
+        Rc::new(RefusedState(refused))
+    }
+}
+
 pub fn use_queue() -> QueueHandle {
     let items = use_reducer(|| QueueState(Vec::new()));
     let next_id = use_state(|| 0u64);
     let raw_text = use_state(String::new);
     let parse_error = use_state(|| None::<String>);
     let broadcasting = use_state(|| false);
-    let refused_psbts = use_state(Vec::<(String, String)>::new);
+    let refused_psbts = use_reducer(RefusedState::default);
 
     let on_raw_text = {
         let raw_text = raw_text.clone();
@@ -152,7 +172,9 @@ pub fn use_queue() -> QueueHandle {
 
             next_id.set(id);
             parse_error.set(None);
-            refused_psbts.set(refused);
+            if !refused.is_empty() {
+                refused_psbts.dispatch(RefusedAction::Extend(refused));
+            }
 
             if !queued.is_empty() {
                 items.dispatch(QueueAction::Extend(queued));
@@ -187,7 +209,7 @@ pub fn use_queue() -> QueueHandle {
 
     let on_dismiss_refused = {
         let refused_psbts = refused_psbts.clone();
-        Callback::from(move |()| refused_psbts.set(Vec::new()))
+        Callback::from(move |()| refused_psbts.dispatch(RefusedAction::Clear))
     };
 
     let on_files_loaded = {
@@ -268,7 +290,7 @@ pub fn use_queue() -> QueueHandle {
         raw_text: (*raw_text).clone(),
         parse_error: (*parse_error).clone(),
         broadcasting: *broadcasting,
-        refused_psbts: (*refused_psbts).clone(),
+        refused_psbts: refused_psbts.0.clone(),
         on_raw_text,
         on_submit,
         on_dismiss_refused,
