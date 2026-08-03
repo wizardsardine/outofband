@@ -164,6 +164,37 @@ fn decode_tx_binary(bytes: &[u8]) -> Result<Decoded, TxCoreError> {
         .map_err(TxCoreError::TransactionDeserialize)
 }
 
+/// A transaction cannot be relayed whatever its contents are.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StructuralError {
+    NoInputs,
+    NoOutputs,
+}
+
+impl fmt::Display for StructuralError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NoInputs => write!(f, "transaction has no inputs"),
+            Self::NoOutputs => write!(f, "transaction has no outputs"),
+        }
+    }
+}
+
+impl std::error::Error for StructuralError {}
+
+/// Rejects a transaction no node would ever accept: one with no inputs, or
+/// one with no outputs. Both deserialize fine, so decoding alone never
+/// catches them.
+pub fn check_structure(tx: &Transaction) -> Result<(), StructuralError> {
+    if tx.input.is_empty() {
+        return Err(StructuralError::NoInputs);
+    }
+    if tx.output.is_empty() {
+        return Err(StructuralError::NoOutputs);
+    }
+    Ok(())
+}
+
 /// Splits multi-entry text input into individual entries: one per non-blank
 /// line, skipping lines whose first non-whitespace character is `#`.
 pub fn split_lines(input: &str) -> Vec<&str> {
