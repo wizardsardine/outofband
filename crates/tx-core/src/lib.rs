@@ -261,3 +261,145 @@ pub fn serialize(tx: &Transaction) -> Vec<u8> {
 pub fn serialize_hex(tx: &Transaction) -> String {
     consensus::encode::serialize_hex(tx)
 }
+
+/// Exact virtual size of `tx`, in vbytes. Every queued item is finalized
+/// before this is called, so the result is always exact — there is no
+/// estimation path.
+pub fn vsize(tx: &Transaction) -> u64 {
+    tx.vsize() as u64
+}
+
+/// Sums a saturating `u64` total from an iterator of satoshi amounts:
+/// adversarial input (values summing past `u64::MAX`) reports the
+/// maximum rather than wrapping or panicking.
+fn sum_sats<I: IntoIterator<Item = bitcoin::Amount>>(amounts: I) -> u64 {
+    amounts
+        .into_iter()
+        .fold(0u64, |acc, amount| acc.saturating_add(amount.to_sat()))
+}
+
+/// Sum of `tx`'s output values, in satoshis.
+pub fn output_sum(tx: &Transaction) -> u64 {
+    sum_sats(tx.output.iter().map(|out| out.value))
+}
+
+/// Sum of a PSBT's unsigned-transaction output values, in satoshis:
+/// available whether or not the PSBT's inputs carry UTXO data, so a
+/// partial-UTXO PSBT is never stranded without a known output sum.
+pub fn psbt_output_sum(psbt: &Psbt) -> u64 {
+    output_sum(&psbt.unsigned_tx)
+}
+
+/// The known-input-value state of a PSBT.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InputSum {
+    /// Every input carried UTXO data; this is the exact sum, in satoshis.
+    Known(u64),
+    /// At least one input is missing UTXO data; carries how many.
+    Unknown { missing_utxo_inputs: usize },
+}
+
+/// Sums a PSBT's per-input UTXO values: `witness_utxo.value`, or the
+/// referenced output of `non_witness_utxo`. If any input has neither,
+/// returns [`InputSum::Unknown`] with the count missing rather than an
+/// exact sum over a subset — a partial sum would silently understate the
+/// fee.
+pub fn psbt_input_sum(psbt: &Psbt) -> InputSum {
+    let mut sum = 0u64;
+    let mut missing = 0usize;
+
+    for (tx_in, input) in psbt.unsigned_tx.input.iter().zip(psbt.inputs.iter()) {
+        let value = input
+            .witness_utxo
+            .as_ref()
+            .map(|utxo| utxo.value)
+            .or_else(|| {
+                input
+                    .non_witness_utxo
+                    .as_ref()
+                    .and_then(|prev_tx| prev_tx.output.get(tx_in.previous_output.vout as usize))
+                    .map(|out| out.value)
+            });
+        match value {
+            Some(value) => sum = sum.saturating_add(value.to_sat()),
+            None => missing += 1,
+        }
+    }
+
+    if missing > 0 {
+        InputSum::Unknown {
+            missing_utxo_inputs: missing,
+        }
+    } else {
+        InputSum::Known(sum)
+    }
+}
+
+/// The fee analysis of a PSBT.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PsbtFee {
+    /// Every input carried UTXO data; this is the exact fee, in satoshis.
+    /// May be negative for an inconsistent PSBT (outputs exceeding
+    /// inputs) — reported, not rejected.
+    Known { fee_sats: i128 },
+    /// At least one input is missing UTXO data; carries how many.
+    Unknown { missing_utxo_inputs: usize },
+}
+
+/// Derives a PSBT's fee from its inputs' UTXO data and its outputs.
+pub fn psbt_fee(psbt: &Psbt) -> PsbtFee {
+    match psbt_input_sum(psbt) {
+        InputSum::Known(input_sum) => {
+            let output_sum = psbt_output_sum(psbt);
+            PsbtFee::Known {
+                fee_sats: input_sum as i128 - output_sum as i128,
+            }
+        }
+        InputSum::Unknown {
+            missing_utxo_inputs,
+        } => PsbtFee::Unknown {
+            missing_utxo_inputs,
+        },
+    }
+}
+
+/// Fee and known output sum derived from a user-entered total input value:
+/// used for raw transactions (previous outputs unknown) and PSBTs missing
+/// UTXO data on some inputs, both of which otherwise show no fee at all.
+/// The fee may be negative if the entered total understates the output
+/// sum; that is reported, never rejected or panicked on.
+pub fn fee_from_user_total(total_input_sats: u64, output_sum_sats: u64) -> i128 {
+    total_input_sats as i128 - output_sum_sats as i128
+}
+
+/// Fee rate in sat/vB, computed as `fee / vsize`. `None` if `vsize` is
+/// zero: there is no meaningful rate to report, rather than an infinite
+/// one.
+pub fn fee_rate(fee_sats: i128, vsize: u64) -> Option<f64> {
+    if vsize == 0 {
+        return None;
+    }
+    Some(fee_sats as f64 / vsize as f64)
+}
+
+/// A fee rate's relationship to the live floor: drives the queue row's
+/// Ready / Below floor / Fee unknown label only. Never a gate — every
+/// queued item remains submittable regardless of this result.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FloorComparison {
+    /// The rate meets or exceeds the floor.
+    AtOrAbove,
+    /// The rate is below the floor.
+    Below,
+    /// No rate could be derived.
+    Unknown,
+}
+
+/// Compares `rate` (sat/vB) against `floor` (sat/vB).
+pub fn compare_to_floor(rate: Option<f64>, floor: f64) -> FloorComparison {
+    match rate {
+        Some(rate) if rate >= floor => FloorComparison::AtOrAbove,
+        Some(_) => FloorComparison::Below,
+        None => FloorComparison::Unknown,
+    }
+}
