@@ -21,6 +21,7 @@ use crate::rate_limit::{self, RateLimiter};
 /// `stale: true` alongside the last-known value rather than silently
 /// serving a number that may no longer reflect Slipstream's floor.
 const STALE_AFTER_CONSECUTIVE_FAILURES: u32 = 3;
+const BROADCAST_JSON_OVERHEAD_BYTES: usize = r#"{"tx_hex":""}"#.len();
 
 #[derive(Clone)]
 pub struct AppState {
@@ -84,7 +85,9 @@ pub fn router(state: AppState, max_payload_bytes: usize) -> Router {
         .route("/fee", get(get_fee))
         .route("/broadcast", post(post_broadcast))
         .route("/health", get(get_health))
-        .layer(DefaultBodyLimit::max(max_payload_bytes))
+        .layer(DefaultBodyLimit::max(
+            max_payload_bytes.saturating_add(BROADCAST_JSON_OVERHEAD_BYTES),
+        ))
         .with_state(state)
 }
 
@@ -598,6 +601,25 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    }
+
+    #[tokio::test]
+    async fn broadcast_body_limit_allows_configured_hex_length() {
+        let state = broadcast_state(
+            "http://127.0.0.1:1".to_string(),
+            RateLimiter::new(Duration::from_secs(600), 100),
+        );
+        let app = router(state, 16);
+
+        let response = app
+            .oneshot(broadcast_request(
+                json!({"tx_hex": "00".repeat(8)}),
+                non_local_peer(7),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 
     #[tokio::test]

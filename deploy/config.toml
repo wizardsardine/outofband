@@ -11,7 +11,5 @@ listen_addr = "127.0.0.1:3010"
 fee_poll_secs = 60
 rate_limit_window_secs = 600
 rate_limit_max_tx = 100
-max_payload_bytes = 1048576          # 1 MiB; raise to 8388608 (8 MiB) if
-                                     # full-block non-standard txs are expected.
-                                     # Keep == the nginx client_max_body_size
-                                     # (both templated from one install variable).
+max_payload_bytes = 1048576          # Maximum transaction-hex length. nginx
+                                     # adds JSON framing and rounds up to MiB.

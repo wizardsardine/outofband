@@ -13,11 +13,10 @@ die() { log_error "$*"; exit 1; }
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# single source of truth for the payload size budget shared by the backend
-# config and the nginx site (section 6: "cannot drift")
+# Maximum transaction-hex length. nginx also allows JSON framing overhead.
 MAX_PAYLOAD_BYTES=1048576
-# doubled for hex/JSON overhead, rounded up to a whole MiB for nginx
-NGINX_CLIENT_MAX_BODY="$(( (MAX_PAYLOAD_BYTES * 2 + 1048575) / 1048576 ))m"
+NGINX_JSON_OVERHEAD_BYTES=13
+NGINX_CLIENT_MAX_BODY="$(( (MAX_PAYLOAD_BYTES + NGINX_JSON_OVERHEAD_BYTES + 1048575) / 1048576 ))m"
 
 DOMAIN=""
 EMAIL=""
