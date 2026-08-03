@@ -26,7 +26,7 @@ serve:
     cd crates/broadcast-frontend && trunk serve   # frontend only, :3010 must be up
 
 deploy remote:
-    ./deploy/install.sh {{remote}}
+    ./deploy/install.sh {{ quote(remote) }}
 
 local:
     ./deploy/install.sh
