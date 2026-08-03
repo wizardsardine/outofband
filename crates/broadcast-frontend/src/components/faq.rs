@@ -88,19 +88,18 @@ fn entries(fee: Option<&FeeSnapshot>) -> Vec<(&'static str, String)> {
         ),
         (
             "Does anything I paste get sent to your server?",
-            "Decoding, finalizing and fee maths all run in your browser. The only thing that ever \
-             leaves this page is the finalized transaction hex, sent when you press Broadcast \
-             through this site's own thin relay, which holds the Slipstream credential, enforces \
-             rate limits, stores nothing, and logs txids only."
+            "No. Decoding, finalizing and fee maths all run in your browser, and this site has no \
+             server in the path. The only thing that ever leaves this page is the finalized \
+             transaction hex, sent straight from your browser to MARA Slipstream when you press \
+             Broadcast."
                 .to_string(),
         ),
         (
             "What does MARA learn about me?",
-            "The transaction itself. It reaches MARA through this site's relay, so MARA sees the \
-             relay's IP, not yours. The relay operator sees your IP, as any website does. MARA \
-             does not learn your PSBT metadata, your xpubs, your descriptor, or which other \
-             transactions you queued here. Use Tor or a VPN if the relay operator seeing your IP \
-             matters to you."
+            "The transaction, and your IP address. Your browser talks to MARA directly, so the \
+             connection is yours and MARA sees the address you are browsing from. MARA does not \
+             learn your PSBT metadata, your xpubs, your descriptor, or which other transactions \
+             you queued here. Use Tor or a VPN if MARA seeing your IP matters to you."
                 .to_string(),
         ),
         (

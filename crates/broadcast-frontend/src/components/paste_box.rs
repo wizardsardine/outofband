@@ -171,7 +171,7 @@ pub fn paste_box(props: &PasteBoxProps) -> Html {
                 <div>
                     <h2 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-.2px">{"Load transactions"}</h2>
                     <p style={format!("margin:7px 0 0;font-size:13.5px;line-height:1.55;color:{TEXT_MUTED_7B};max-width:70ch")}>
-                        {"Paste or drop signed PSBTs and raw transactions. We hand each one to MARA Slipstream, which mines it without ever touching the public mempool."}
+                        {"Paste or drop signed PSBTs and raw transactions. Your browser sends each one straight to MARA Slipstream, which mines it without ever touching the public mempool."}
                     </p>
                 </div>
                 <span style={format!("font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.6px;color:{TEXT_MUTED_6A}")}>{detected}</span>
