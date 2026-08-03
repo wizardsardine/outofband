@@ -99,8 +99,10 @@ pub static STRINGS: Strings = Strings {
         的其余部分。被挖出会慢一些，但你不会被交易替换。",
     faq_q_where: "我粘贴的内容实际上去了哪里？",
     faq_a_where: "解码、最终化和手续费计算都在你的浏览器里完成，这个站点中间没有任何服务器。\
-        唯一离开本页面（以及你电脑）的，是最终化之后的交易 hex，在你按下发送时由浏览器直接\
-        发给 MARA Slipstream。",
+        离开本页面的有两样东西：最终化之后的交易 hex，在你按下发送时由浏览器直接发给 MARA \
+        Slipstream；以及 Plausible 统计的一次匿名访问。Plausible 不使用 cookie，也不记录\
+        任何能识别你的信息，但和 MARA 一样，它能看到你连接时使用的 IP 地址。如果你在意这一点，\
+        请使用 Tor 或 VPN。你粘贴的内容永远不会包含在其中任何一项里。",
     faq_q_mara_learns: "MARA 能知道我的哪些信息？",
     faq_a_mara_learns: "交易内容，以及你的 IP 地址。你的浏览器直接与 MARA 通信，所以连接是\
         你自己的，MARA 会看到你上网的地址。MARA 不会知道你的 PSBT 元数据、你的 xpub、你的 \

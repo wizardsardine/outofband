@@ -103,9 +103,12 @@ pub static STRINGS: Strings = Strings {
         sostituzione.",
     faq_q_where: "Dove finisce davvero quello che incollo?",
     faq_a_where: "Decodifica, finalizzazione e calcolo delle fee avvengono tutti nel browser, e \
-        questo sito non ha alcun server nel mezzo. L'unica cosa che lascia questa pagina (e il \
-        tuo computer) è la transazione finalizzata in hex, inviata direttamente dal browser a \
-        MARA Slipstream quando premi Invia.",
+        questo sito non ha alcun server nel mezzo. Due cose lasciano questa pagina: la \
+        transazione finalizzata in hex, inviata direttamente dal browser a MARA Slipstream quando \
+        premi Invia, e una visita anonima conteggiata da Plausible. Plausible non usa cookie e \
+        non registra nulla che ti identifichi, ma, come MARA, vede l'indirizzo IP da cui ti \
+        colleghi. Usa Tor o una VPN se per te è importante. Quello che incolli non fa mai parte \
+        né dell'una né dell'altra.",
     faq_q_mara_learns: "Cosa viene a sapere MARA di me?",
     faq_a_mara_learns: "I dati della transazione e il tuo indirizzo IP. Il browser parla \
         direttamente con MARA, quindi la connessione è tua e MARA vede l'indirizzo da cui navighi. \
