@@ -20,23 +20,22 @@ pub static STRINGS: Strings = Strings {
     hero_line_one: "Faites miner vos transactions",
     hero_line_two: "directement, sans passer par le mempool public.",
 
-    fee_eyebrow: "Taux de frais minimum accepté",
-    fee_sentence: "En dessous de ce taux, une transaction n'a pas vocation à être minée. Le \
+    fee_eyebrow: "Fee rate minimum acceptée",
+    fee_sentence: "En dessous de cette Fee rate, une transaction n'a pas vocation à être minée. Le \
         dépasser n'est pas non plus une garantie.",
     fee_stale: "Ce taux n'est peut-être plus à jour.",
     fee_advice: "Ce seuil est *dynamique*. Il suit la demande : construisez donc votre \
-        transaction à un taux *nettement supérieur* au seuil, sinon elle risque de repasser en \
+        transaction à une Fee rate *nettement supérieure* au seuil, sinon elle risque de repasser en \
         dessous avant d'être minée.",
 
     prepare_heading: "Préparez votre transaction",
     prepare_liana: "Sous Liana, préparez votre transaction normalement et signez-la, mais \
-        n'appuyez !SURTOUT PAS! sur le bouton de diffusion. Une fois signée, cliquez plutôt sur \
+        n'appuyez !SURTOUT PAS! sur le bouton *Broadcast*. Une fois signée, cliquez plutôt sur \
         *Export*. C'est ce fichier que vous chargerez à l'étape suivante.",
     prepare_drafts: "Si vous l'avez déjà signée sans enregistrer le fichier PSBT, vous \
         retrouverez la transaction dans *Drafts and Approvals*.",
-    prepare_other_wallets: "Construisez et signez votre transaction normalement, mais *ne la \
-        diffusez pas sur le réseau Bitcoin*. Tous les logiciels ne permettent pas de signer sans \
-        diffuser : en cas de doute, consultez leur documentation avant de signer. Utilisateurs de \
+    prepare_other_wallets: "Construisez et signez votre transaction normalement, mais *ne faites pas de Broadcast sur le réseau Bitcoin*. Tous les logiciels ne permettent pas de signer sans \
+        faire de Broadcast : en cas de doute, consultez leur documentation avant de signer. Utilisateurs de \
         Liana, lisez simplement l'encadré ci-dessus.",
     prepare_tutorials: "Des liens vers des tutoriels de vulgarisateurs seront ajoutés ici dès \
         qu'ils seront prêts. Si vous ne savez pas comment faire avec votre portefeuille, vous \
@@ -68,7 +67,7 @@ pub static STRINGS: Strings = Strings {
     col_source: "Source",
     col_format: "Format",
     col_vsize: "vsize",
-    col_fee_rate: "Taux de frais",
+    col_fee_rate: "Fee rate",
     col_status: "Statut",
     btn_retry: "Réessayer",
     row_remove_title: "Retirer de la file",
@@ -93,10 +92,10 @@ pub static STRINGS: Strings = Strings {
 
     faq_eyebrow: "Les questions à se poser avant d'utiliser cet outil",
     faq_q_why: "À quoi sert cet outil ?",
-    faq_a_why: "Une diffusion normale propage votre transaction à tous les nœuds Bitcoin du \
+    faq_a_why: "Un Broadcast normal propage votre transaction à tous les nœuds Bitcoin du \
         réseau avant qu'elle soit minée. Si quelqu'un détient une clé capable de dépenser les \
         mêmes pièces, il peut remplacer la transaction et voler ces pièces avant qu'elle soit \
-        minée. Slipstream (ce qu'utilise cet outil) évite cette propagation : la transaction va à \
+        minée. Slipstream (ce qu'utilise cet outil) évite ce Broadcast : la transaction va à \
         un seul mineur, sans être envoyée au reste du réseau. Elle sera plus lente à miner, mais \
         vous serez à l'abri du remplacement.",
     faq_q_where: "Où va réellement ce que je colle ?",
@@ -108,16 +107,16 @@ pub static STRINGS: Strings = Strings {
     faq_a_mara_learns: "Le contenu de la transaction, et votre adresse IP. Votre navigateur \
         parle directement à MARA : la connexion est la vôtre et MARA voit l'adresse depuis \
         laquelle vous naviguez. MARA n'apprend ni les métadonnées de votre PSBT, ni vos xpubs, ni \
-        votre descripteur, ni quelles autres transactions vous avez mises en file ici. Utilisez \
+        votre descriptor, ni quelles autres transactions vous avez mises en file ici. Utilisez \
         Tor ou un VPN si vous tenez à ce que MARA ne voie pas votre IP.",
     faq_q_guaranteed: "Suis-je certain que ma transaction sera minée ?",
     faq_a_guaranteed: "Non. Acceptée par Slipstream ne veut pas dire confirmée. MARA ne mine \
         qu'une partie des blocs, et peut écarter votre transaction pour des raisons qu'il n'a pas \
         à expliquer. Voyez cela comme une meilleure chance, pas comme une promesse. Si elle n'est \
         toujours pas confirmée au bout de quelques heures, réessayez.",
-    faq_q_rate_differs: "Pourquoi le taux de frais diffère-t-il de Mempool.space ?",
-    faq_a_rate_differs: "Slipstream est rémunéré pour ce service par un taux de frais plus \
-        élevé. Ce site ne touche aucune part de ce paiement, ni aucune compensation.",
+    faq_q_rate_differs: "Pourquoi la Fee rate diffère-t-elle de Mempool.space ?",
+    faq_a_rate_differs: "Slipstream est rémunéré pour ce service par une Fee rate plus \
+        élevée. Ce site ne touche aucune part de ce paiement, ni aucune compensation.",
     faq_q_cpfp: "Une seconde transaction peut-elle payer les frais d'une première (CPFP) ?",
     faq_a_cpfp: "Non. Slipstream examine chaque transaction séparément : une transaction qui ne \
         paie pas assez ne sera pas minée ici, même si vous en envoyez une autre qui paie plus \

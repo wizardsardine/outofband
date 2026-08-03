@@ -5,6 +5,31 @@
 //! English fallback discovered by a user. Adding a string means adding a
 //! field, which will not build until every language has answered for it.
 //!
+//! # Terms that stay English
+//!
+//! Bitcoiners overwhelmingly run English software, so a translated term of
+//! art costs a reader more than it saves: someone who knows what a
+//! *fee rate* is does not recognise a *Gebührenrate*, and someone hunting
+//! for the **Broadcast** button in their wallet is not helped by being told
+//! about *diffusion*. Anglicisms are preferred over precision here.
+//!
+//! Left in English in every catalogue:
+//!
+//! - **Protocol and wallet vocabulary**: `PSBT`, `mempool`, `Broadcast`,
+//!   `Fee rate`, `sat/vB`, `vsize`, `TXID`, `hex`, `base64`, `xpub`,
+//!   `descriptor`, `multisig`, `Miniscript`, `CPFP`.
+//! - **Names of other people's things**: `Liana`, `Export`,
+//!   `Drafts and Approvals`, `MARA`, `Slipstream`, `Mempool.space`. These
+//!   are labels a reader is looking for on another screen; translating one
+//!   sends them hunting for a button that does not exist.
+//!
+//! Everything else is translated, including this page's own controls
+//! (`Send`, `Close`, `Retry`, `Add to queue`). Those are ordinary UI verbs
+//! rather than vocabulary, and a reader expects them in their language.
+//!
+//! `glossary_terms_are_not_translated` in the tests below enforces the
+//! list, so a future translator cannot quietly localise one.
+//!
 //! What is deliberately **not** translated:
 //!
 //! - Format names and units (`PSBT · base64`, `sat/vB`, file extensions).
@@ -468,6 +493,59 @@ mod tests {
                 ("msg_unreachable", s.msg_unreachable),
             ] {
                 assert!(!value.trim().is_empty(), "{lang:?} {name} is empty");
+            }
+        }
+    }
+
+    #[test]
+    fn glossary_terms_are_not_translated() {
+        // Bitcoiners run English software. A reader hunting for the
+        // Broadcast button in their wallet is not helped by being told about
+        // "diffusion", and someone who knows what a fee rate is does not
+        // recognise a "Gebührenrate". See the glossary at the top of this
+        // module; this test is what keeps a future translator from quietly
+        // localising one of them.
+        for lang in Lang::ALL {
+            let s = lang.strings();
+
+            // Identical in every language, not merely present: this is a
+            // column header with no room for a gloss.
+            assert_eq!(s.col_fee_rate, "Fee rate", "{lang:?} col_fee_rate");
+
+            for (field, value, term) in [
+                ("fee_eyebrow", s.fee_eyebrow, "fee rate"),
+                ("fee_advice", s.fee_advice, "fee rate"),
+                ("faq_q_rate_differs", s.faq_q_rate_differs, "fee rate"),
+                ("faq_q_rate_differs", s.faq_q_rate_differs, "mempool.space"),
+                ("faq_a_rate_differs", s.faq_a_rate_differs, "fee rate"),
+                // Liana's two buttons, and the screen a lost PSBT is on.
+                ("prepare_liana", s.prepare_liana, "broadcast"),
+                ("prepare_liana", s.prepare_liana, "export"),
+                ("prepare_drafts", s.prepare_drafts, "drafts and approvals"),
+                (
+                    "prepare_other_wallets",
+                    s.prepare_other_wallets,
+                    "broadcast",
+                ),
+                ("faq_a_why", s.faq_a_why, "broadcast"),
+                ("faq_a_why", s.faq_a_why, "slipstream"),
+                // Protocol vocabulary.
+                ("hero_line_two", s.hero_line_two, "mempool"),
+                ("load_blurb", s.load_blurb, "mempool"),
+                ("load_blurb", s.load_blurb, "psbt"),
+                ("faq_a_mara_learns", s.faq_a_mara_learns, "psbt"),
+                ("faq_a_mara_learns", s.faq_a_mara_learns, "xpub"),
+                ("faq_a_mara_learns", s.faq_a_mara_learns, "descriptor"),
+                ("faq_a_where", s.faq_a_where, "hex"),
+                ("faq_q_cpfp", s.faq_q_cpfp, "cpfp"),
+                ("context_audience", s.context_audience, "liana"),
+                ("context_audience", s.context_audience, "miniscript"),
+                ("context_audience", s.context_audience, "multisig"),
+            ] {
+                assert!(
+                    value.to_lowercase().contains(term),
+                    "{lang:?} {field} lost the glossary term {term:?}: {value}"
+                );
             }
         }
     }

@@ -23,11 +23,11 @@ pub static STRINGS: Strings = Strings {
         guarantee either.",
     fee_stale: "This rate may be out of date.",
     fee_advice: "This floor is *dynamic*. It moves with demand, so build your transaction at a \
-        rate *significantly higher* than the floor, or it may stop clearing before it is mined.",
+        fee rate *significantly higher* than the floor, or it may stop clearing before it is mined.",
 
     prepare_heading: "Prepare your transaction",
     prepare_liana: "For Liana users, prepare your transaction normally and sign it, but !DO NOT! \
-        press the broadcast button. Once it is signed, click *Export* instead. That file is what \
+        press the *Broadcast* button. Once it is signed, click *Export* instead. That file is what \
         you load in the next step.",
     prepare_drafts: "If you already signed it but did not save the PSBT file, you can find the \
         transaction again under *Drafts and Approvals*.",

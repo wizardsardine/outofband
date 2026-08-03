@@ -12,7 +12,7 @@ pub static STRINGS: Strings = Strings {
         herramienta",
 
     context_audience: "Esta herramienta solo es importante para ciertos usuarios: sobre todo \
-        carteras *Liana*, *Miniscript* o algunos tipos de *multifirma*.",
+        carteras *Liana*, *Miniscript* o algunos tipos de *multisig*.",
     context_not_recommended: "Esta herramienta !NO! se recomienda para carteras en riesgo \
         crítico, como se explica en [esta entrada del blog \
         ›](https://wizardsardine.com/blog/coldcard-rng-vulnerability/)",
@@ -20,22 +20,21 @@ pub static STRINGS: Strings = Strings {
     hero_line_one: "Consigue que tus transacciones",
     hero_line_two: "se minen directamente, sin pasar por la mempool pública.",
 
-    fee_eyebrow: "Tasa mínima aceptada",
-    fee_sentence: "No se espera que se mine nada por debajo de esta tasa. Superarla tampoco es \
+    fee_eyebrow: "Fee rate mínima aceptada",
+    fee_sentence: "No se espera que se mine nada por debajo de esta Fee rate. Superarla tampoco es \
         ninguna garantía.",
     fee_stale: "Esta tasa puede estar desactualizada.",
     fee_advice: "Este mínimo es *dinámico*. Se mueve con la demanda, así que construye tu \
-        transacción con una tasa *bastante más alta* que el mínimo, o puede dejar de superarlo \
+        transacción con una Fee rate *bastante más alta* que el mínimo, o puede dejar de superarlo \
         antes de que se mine.",
 
     prepare_heading: "Prepara tu transacción",
     prepare_liana: "Si usas Liana, prepara tu transacción con normalidad y fírmala, pero !NO! \
-        pulses el botón de difusión. Una vez firmada, pulsa *Export* en su lugar. Ese archivo es \
+        pulses el botón *Broadcast*. Una vez firmada, pulsa *Export* en su lugar. Ese archivo es \
         el que cargarás en el siguiente paso.",
     prepare_drafts: "Si ya la firmaste pero no guardaste el archivo PSBT, puedes encontrar la \
         transacción de nuevo en *Drafts and Approvals*.",
-    prepare_other_wallets: "Construye y firma tu transacción con normalidad, pero *no la \
-        difundas a la red de Bitcoin*. No todos los programas permiten firmar sin difundir, así \
+    prepare_other_wallets: "Construye y firma tu transacción con normalidad, pero *no hagas Broadcast a la red de Bitcoin*. No todos los programas permiten firmar sin hacer Broadcast, así \
         que consulta su documentación antes de firmar si tienes dudas. Si usas Liana, lee la \
         tarjeta de arriba.",
     prepare_tutorials: "Añadiremos aquí enlaces a tutoriales de divulgadores cuando estén \
@@ -67,7 +66,7 @@ pub static STRINGS: Strings = Strings {
     col_source: "Origen",
     col_format: "Formato",
     col_vsize: "vsize",
-    col_fee_rate: "Tasa",
+    col_fee_rate: "Fee rate",
     col_status: "Estado",
     btn_retry: "Reintentar",
     row_remove_title: "Quitar de la cola",
@@ -92,10 +91,10 @@ pub static STRINGS: Strings = Strings {
 
     faq_eyebrow: "Preguntas que deberías hacerte antes de usar esto",
     faq_q_why: "¿Para qué sirve esta herramienta?",
-    faq_a_why: "Una difusión normal reparte tu transacción a todos los nodos de Bitcoin de la \
+    faq_a_why: "Un Broadcast normal reparte tu transacción a todos los nodos de Bitcoin de la \
         red antes de que se mine. Si alguien tiene una clave capaz de gastar esas mismas monedas, \
         puede reemplazar la transacción y robarlas antes de que se mine. Slipstream (lo que usa \
-        esta herramienta) se salta ese reparto: la transacción va a un solo minero, sin enviarse \
+        esta herramienta) se salta ese Broadcast: la transacción va a un solo minero, sin enviarse \
         al resto de la red. Tardará más en minarse, pero estarás a salvo del reemplazo.",
     faq_q_where: "¿Adónde va realmente lo que pego?",
     faq_a_where: "La descodificación, la finalización y el cálculo de comisiones ocurren en tu \
@@ -112,8 +111,8 @@ pub static STRINGS: Strings = Strings {
         una parte de los bloques, no todos, y puede descartar tu transacción por motivos que no \
         tiene que explicar. Tómatelo como una oportunidad mejor, no como una promesa. Si no se ha \
         confirmado al cabo de unas horas, vuelve a intentarlo.",
-    faq_q_rate_differs: "¿Por qué la tasa es distinta de la de Mempool.space?",
-    faq_a_rate_differs: "A Slipstream se le paga el servicio con una tasa más alta. Esta web no \
+    faq_q_rate_differs: "¿Por qué la Fee rate es distinta de la de Mempool.space?",
+    faq_a_rate_differs: "A Slipstream se le paga el servicio con una Fee rate más alta. Esta web no \
         se lleva ninguna parte de ese pago, ni ninguna compensación.",
     faq_q_cpfp: "¿Puede una segunda transacción pagar la comisión de otra más barata (CPFP)?",
     faq_a_cpfp: "No. Slipstream mira cada transacción por separado, así que una que no pague lo \

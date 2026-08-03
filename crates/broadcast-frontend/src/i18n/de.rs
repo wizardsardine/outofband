@@ -19,23 +19,23 @@ pub static STRINGS: Strings = Strings {
     hero_line_one: "Lassen Sie Ihre Transaktionen",
     hero_line_two: "direkt schürfen, ohne den öffentlichen Mempool.",
 
-    fee_eyebrow: "Mindestens akzeptierte Gebührenrate",
-    fee_sentence: "Alles unterhalb dieser Rate wird voraussichtlich nicht geschürft. Sie zu \
+    fee_eyebrow: "Mindestens akzeptierte Fee rate",
+    fee_sentence: "Alles unterhalb dieser Fee rate wird voraussichtlich nicht geschürft. Sie zu \
         erreichen ist aber auch keine Garantie.",
     fee_stale: "Diese Rate ist möglicherweise veraltet.",
     fee_advice: "Diese Untergrenze ist *dynamisch*. Sie bewegt sich mit der Nachfrage: Bauen Sie \
-        Ihre Transaktion daher mit einer *deutlich höheren* Rate als der Untergrenze, sonst \
+        Ihre Transaktion daher mit einer *deutlich höheren* Fee rate als der Untergrenze, sonst \
         erreicht sie diese womöglich nicht mehr, bevor sie geschürft wird.",
 
     prepare_heading: "Transaktion vorbereiten",
     prepare_liana: "Liana-Nutzer bereiten ihre Transaktion wie gewohnt vor und signieren sie, \
-        drücken aber !AUF KEINEN FALL! die Schaltfläche zum Senden. Klicken Sie nach dem \
+        drücken aber !AUF KEINEN FALL! die Schaltfläche *Broadcast*. Klicken Sie nach dem \
         Signieren stattdessen auf *Export*. Diese Datei laden Sie im nächsten Schritt.",
     prepare_drafts: "Falls Sie bereits signiert, die PSBT-Datei aber nicht gespeichert haben, \
         finden Sie die Transaktion unter *Drafts and Approvals* wieder.",
     prepare_other_wallets: "Erstellen und signieren Sie Ihre Transaktion wie gewohnt, aber \
-        *senden Sie sie nicht an das Bitcoin-Netzwerk*. Nicht jede Software erlaubt das Signieren \
-        ohne Senden; lesen Sie im Zweifel vor dem Signieren deren Dokumentation. Liana-Nutzer \
+        *machen Sie keinen Broadcast ins Bitcoin-Netzwerk*. Nicht jede Software erlaubt das Signieren \
+        ohne Broadcast; lesen Sie im Zweifel vor dem Signieren deren Dokumentation. Liana-Nutzer \
         lesen einfach die Karte oben.",
     prepare_tutorials: "Sobald sie fertig sind, werden hier Links zu Anleitungen von Lehrenden \
         ergänzt. Wenn Sie unsicher sind, wie das mit Ihrer Wallet geht, können Sie warten und \
@@ -67,7 +67,7 @@ pub static STRINGS: Strings = Strings {
     col_source: "Quelle",
     col_format: "Format",
     col_vsize: "vsize",
-    col_fee_rate: "Gebührenrate",
+    col_fee_rate: "Fee rate",
     col_status: "Status",
     btn_retry: "Erneut",
     row_remove_title: "Aus der Warteschlange entfernen",
@@ -92,7 +92,7 @@ pub static STRINGS: Strings = Strings {
 
     faq_eyebrow: "Fragen, die Sie vorher stellen sollten",
     faq_q_why: "Wofür ist dieses Werkzeug gut?",
-    faq_a_why: "Eine normale Übertragung verteilt Ihre Transaktion an jeden Bitcoin-Knoten im \
+    faq_a_why: "Ein normaler Broadcast verteilt Ihre Transaktion an jeden Bitcoin-Knoten im \
         Netzwerk, bevor sie geschürft wird. Wenn jemand einen Schlüssel besitzt, der dieselben \
         Coins ausgeben kann, kann diese Person die Transaktion ersetzen und die Coins stehlen, \
         bevor sie geschürft wird. Slipstream (was dieses Werkzeug nutzt) überspringt diese \
@@ -115,8 +115,8 @@ pub static STRINGS: Strings = Strings {
         einen Teil der Blöcke, nicht alle, und kann Ihre Transaktion aus Gründen verwerfen, die \
         es nicht erklären muss. Sehen Sie das als bessere Chance, nicht als Zusage. Wenn sie nach \
         einigen Stunden nicht bestätigt ist, versuchen Sie es erneut.",
-    faq_q_rate_differs: "Warum weicht die Gebührenrate von Mempool.space ab?",
-    faq_a_rate_differs: "Slipstream wird über eine höhere Gebührenrate für den Dienst bezahlt. \
+    faq_q_rate_differs: "Warum weicht die Fee rate von Mempool.space ab?",
+    faq_a_rate_differs: "Slipstream wird über eine höhere Fee rate für den Dienst bezahlt. \
         Diese Website erhält davon keinen Anteil und keinerlei Vergütung.",
     faq_q_cpfp: "Kann eine zweite Transaktion die Gebühr für eine günstige bezahlen (CPFP)?",
     faq_a_cpfp: "Nein. Slipstream betrachtet jede Transaktion für sich, eine zu günstige wird \

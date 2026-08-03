@@ -8,7 +8,7 @@
 use super::{Plurals, Strings};
 
 pub static STRINGS: Strings = Strings {
-    page_title: "Outofband: transmissão direta ao minerador",
+    page_title: "Outofband: Broadcast direto ao minerador",
     lang_picker_label: "Idioma",
 
     disclosure_label: "Aviso de segurança",
@@ -24,21 +24,20 @@ pub static STRINGS: Strings = Strings {
     hero_line_one: "Tenha suas transações",
     hero_line_two: "mineradas diretamente, sem usar a mempool pública.",
 
-    fee_eyebrow: "Taxa mínima aceita",
-    fee_sentence: "Nada abaixo desta taxa deve ser minerado. Ficar acima dela também não é \
+    fee_eyebrow: "Fee rate mínima aceita",
+    fee_sentence: "Nada abaixo desta Fee rate deve ser minerado. Ficar acima dela também não é \
         garantia.",
     fee_stale: "Esta taxa pode estar desatualizada.",
     fee_advice: "Este piso é *dinâmico*. Ele acompanha a demanda, então monte sua transação com \
-        uma taxa *bem acima* do piso, ou ela pode deixar de superá-lo antes de ser minerada.",
+        uma Fee rate *bem acima* do piso, ou ela pode deixar de superá-lo antes de ser minerada.",
 
     prepare_heading: "Prepare sua transação",
     prepare_liana: "No Liana, prepare sua transação normalmente e assine, mas !NÃO! aperte o \
-        botão de transmitir. Depois de assinada, clique em *Export*. É esse arquivo que você vai \
+        botão *Broadcast*. Depois de assinada, clique em *Export*. É esse arquivo que você vai \
         carregar na próxima etapa.",
     prepare_drafts: "Se você já assinou mas não salvou o arquivo PSBT, pode encontrar a \
         transação de novo em *Drafts and Approvals*.",
-    prepare_other_wallets: "Monte e assine sua transação normalmente, mas *não a transmita para \
-        a rede Bitcoin*. Nem todo programa permite assinar sem transmitir, então consulte a \
+    prepare_other_wallets: "Monte e assine sua transação normalmente, mas *não faça Broadcast para a rede Bitcoin*. Nem todo programa permite assinar sem fazer Broadcast, então consulte a \
         documentação antes de assinar se estiver em dúvida. Quem usa Liana, é só ler o quadro \
         acima.",
     prepare_tutorials: "Vamos adicionar aqui links para tutoriais de educadores assim que \
@@ -70,7 +69,7 @@ pub static STRINGS: Strings = Strings {
     col_source: "Origem",
     col_format: "Formato",
     col_vsize: "vsize",
-    col_fee_rate: "Taxa",
+    col_fee_rate: "Fee rate",
     col_status: "Status",
     btn_retry: "Tentar de novo",
     row_remove_title: "Remover da fila",
@@ -95,10 +94,10 @@ pub static STRINGS: Strings = Strings {
 
     faq_eyebrow: "Perguntas que você deveria fazer antes de usar isto",
     faq_q_why: "Para que serve esta ferramenta?",
-    faq_a_why: "Uma transmissão normal espalha sua transação para todos os nós Bitcoin da rede \
+    faq_a_why: "Um Broadcast normal espalha sua transação para todos os nós Bitcoin da rede \
         antes de ela ser minerada. Se alguém tiver uma chave capaz de gastar essas mesmas moedas, \
         pode substituir a transação e roubá-las antes de ela ser minerada. A Slipstream (o que \
-        esta ferramenta usa) pula esse espalhamento: a transação vai para um único minerador, sem \
+        esta ferramenta usa) pula esse Broadcast: a transação vai para um único minerador, sem \
         ser enviada ao resto da rede. Vai demorar mais para ser minerada, mas você fica protegido \
         da substituição.",
     faq_q_where: "Para onde vai de fato o que eu colo?",
@@ -117,8 +116,8 @@ pub static STRINGS: Strings = Strings {
         só uma parte dos blocos, não todos, e pode descartar sua transação por motivos que não \
         precisa explicar. Encare isso como uma chance melhor, não como uma promessa. Se não \
         confirmar depois de algumas horas, tente de novo.",
-    faq_q_rate_differs: "Por que a taxa é diferente da do Mempool.space?",
-    faq_a_rate_differs: "A Slipstream é paga pelo serviço através de uma taxa mais alta. Este \
+    faq_q_rate_differs: "Por que a Fee rate é diferente da do Mempool.space?",
+    faq_a_rate_differs: "A Slipstream é paga pelo serviço através de uma Fee rate mais alta. Este \
         site não fica com nenhuma parte desse pagamento, nem com qualquer compensação.",
     faq_q_cpfp: "Uma segunda transação pode pagar a taxa de uma mais barata (CPFP)?",
     faq_a_cpfp: "Não. A Slipstream olha cada transação separadamente, então uma que não paga o \
