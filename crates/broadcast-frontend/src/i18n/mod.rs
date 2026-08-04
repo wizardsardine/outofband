@@ -106,7 +106,9 @@ impl Lang {
     pub fn reviewed(self) -> bool {
         match self {
             Lang::En => true,
-            Lang::De | Lang::Es | Lang::Fr | Lang::PtBr | Lang::Ru => false,
+            // Reviewed line by line by ProfEduStream, 2026-08.
+            Lang::Fr => true,
+            Lang::De | Lang::Es | Lang::PtBr | Lang::Ru => false,
         }
     }
 
