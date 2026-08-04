@@ -120,6 +120,10 @@ log_info "creating directories"
 sudo mkdir -p /opt/outofband /var/www/outofband
 
 log_info "building broadcast-frontend"
+# Wipe dist first: trunk leaves stale artifacts behind on an interrupted
+# build, and the rsync below is --delete, so a half-built dist publishes a
+# blank page and reports success.
+rm -rf "$PROJECT_ROOT/crates/broadcast-frontend/dist"
 (cd "$PROJECT_ROOT/crates/broadcast-frontend" && trunk build --release)
 
 log_info "installing artifacts"
@@ -150,7 +154,15 @@ sudo nginx -t
 sudo systemctl reload nginx
 
 log_info "checking the site responds"
-curl -sf http://127.0.0.1/ >/dev/null || die "http://127.0.0.1/ did not respond"
+# Resolve the served name to loopback rather than requesting 127.0.0.1: once
+# certbot rewrites the site, a request whose Host matches no server_name gets
+# a 404, and the old check failed on a perfectly healthy deploy. -L follows
+# the 80 to 443 redirect, so this exercises the certificate too.
+SERVED_NAME="$DOMAIN"
+curl -sfL --max-time 15 \
+  --resolve "$SERVED_NAME:80:127.0.0.1" \
+  --resolve "$SERVED_NAME:443:127.0.0.1" \
+  "http://$SERVED_NAME/" >/dev/null || die "$SERVED_NAME did not respond on this host"
 log_info "site check passed"
 
 CERT_ISSUED=0
