@@ -516,9 +516,10 @@ outofband/
 │   ├── install.sh                # full bootstrap of a fresh Debian server
 │   ├── update.sh                 # rebuild and reinstall the bundle
 │   ├── clean.sh                  # remove everything install.sh created
+│   ├── render-security-headers.sh # fills the CSP script hashes in
 │   ├── nginx/outofband.conf      # port-80 server wrapper
 │   ├── nginx/outofband-app.conf  # managed routes, cache policy, logs
-│   └── nginx/outofband-security-headers.conf
+│   └── nginx/outofband-security-headers.conf.in
 └── tools/social/                 # regenerates og.png and the raster icons
     ├── og-template.html          #   the card, screenshotted at 1200x630
     └── render.mjs                #   and the icons, from favicon.svg
@@ -1355,9 +1356,23 @@ builds with `filehash = false` and the bundle keeps its name across
 deployments; `index.html` is `no-cache, no-store, must-revalidate`, so the
 document that pulls in the bundle is always fresh. `autoindex` is off.
 Security headers (`X-Content-Type-Options`, `X-Frame-Options`,
-`X-XSS-Protection`) live in the second snippet and are included again
-inside each nested cache-policy location, because an nginx `add_header` in
-a child location replaces the inherited set instead of adding to it.
+`X-XSS-Protection`, `Content-Security-Policy`) live in the second snippet
+and are included again inside each nested cache-policy location, because an
+nginx `add_header` in a child location replaces the inherited set instead
+of adding to it.
+
+That snippet is rendered, not copied: `deploy/nginx/outofband-security-headers.conf.in`
+carries a `__SCRIPT_HASHES__` placeholder that
+`deploy/render-security-headers.sh` fills with the sha256 of every inline
+script in the page being published. Trunk emits the wasm boot script
+inline, so its hash moves with the bundle and a hardcoded one would serve a
+blank page. The policy denies by default and allows only what the page
+uses: `plausible.io` and those hashes for scripts, `'wasm-unsafe-eval'`
+without which the browser refuses to instantiate the wasm, `'self'` for
+fonts and images, and `slipstream.mara.com` plus `plausible.io` for
+connections. Styles need `'unsafe-inline'` because the UI carries its
+design tokens as inline style attributes; with `img-src`, `font-src` and
+`connect-src` closed, injected CSS has nowhere to send anything.
 
 ### Developer commands — `.justfile`
 

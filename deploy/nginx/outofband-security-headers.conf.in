@@ -1,0 +1,12 @@
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "DENY" always;
+add_header X-XSS-Protection "1; mode=block" always;
+
+# __SCRIPT_HASHES__ is filled in by deploy/render-security-headers.sh from the
+# page it is about to publish. Trunk emits the wasm boot script inline, so its
+# hash changes with the bundle and a hardcoded one would blank the site.
+#
+# 'wasm-unsafe-eval' is what permits instantiating the wasm at all. Styles need
+# 'unsafe-inline' because the UI carries its design tokens as style attributes.
+# connect-src covers the wasm fetch, MARA, and the Plausible event.
+add_header Content-Security-Policy "default-src 'none'; script-src 'self' 'wasm-unsafe-eval' https://plausible.io __SCRIPT_HASHES__; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self'; connect-src 'self' https://slipstream.mara.com https://plausible.io; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" always;

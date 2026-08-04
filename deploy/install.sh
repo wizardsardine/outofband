@@ -90,7 +90,7 @@ sudo apt-get update
 # clang is not optional: `bitcoin` pulls `secp256k1-sys`, which compiles
 # libsecp256k1 from C, and cc-rs targets wasm32 with clang only. gcc from
 # build-essential cannot, so the frontend build dies in the wasm step.
-sudo apt-get install -y build-essential clang pkg-config curl rsync nginx certbot python3-certbot-nginx
+sudo apt-get install -y build-essential clang pkg-config curl rsync nginx certbot python3-certbot-nginx python3
 
 [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
 
@@ -131,7 +131,12 @@ sudo rsync -a --delete "$PROJECT_ROOT/crates/broadcast-frontend/dist/" /var/www/
 
 log_info "installing nginx snippets"
 sudo mkdir -p /etc/nginx/snippets
-sudo cp "$PROJECT_ROOT/deploy/nginx/outofband-security-headers.conf" /etc/nginx/snippets/outofband-security-headers.conf
+# Rendered, not copied: the CSP names the inline scripts of the page installed
+# just above by their hash, so it has to be built from that exact page.
+"$PROJECT_ROOT/deploy/render-security-headers.sh" \
+  "$PROJECT_ROOT/deploy/nginx/outofband-security-headers.conf.in" \
+  "$PROJECT_ROOT/crates/broadcast-frontend/dist/index.html" \
+  | sudo tee /etc/nginx/snippets/outofband-security-headers.conf >/dev/null
 sudo cp "$PROJECT_ROOT/deploy/nginx/outofband-app.conf" /etc/nginx/snippets/outofband-app.conf
 
 if [ ! -f /etc/nginx/sites-available/outofband.conf ]; then

@@ -61,7 +61,12 @@ sudo rsync -a --delete "$PROJECT_ROOT/crates/broadcast-frontend/dist/" /var/www/
 
 log_info "installing nginx snippets"
 sudo mkdir -p /etc/nginx/snippets
-sudo cp "$PROJECT_ROOT/deploy/nginx/outofband-security-headers.conf" /etc/nginx/snippets/outofband-security-headers.conf
+# Rendered, not copied: the CSP names the inline scripts of the page installed
+# just above by their hash, so it has to be built from that exact page.
+"$PROJECT_ROOT/deploy/render-security-headers.sh" \
+  "$PROJECT_ROOT/deploy/nginx/outofband-security-headers.conf.in" \
+  "$PROJECT_ROOT/crates/broadcast-frontend/dist/index.html" \
+  | sudo tee /etc/nginx/snippets/outofband-security-headers.conf >/dev/null
 sudo cp "$PROJECT_ROOT/deploy/nginx/outofband-app.conf" /etc/nginx/snippets/outofband-app.conf
 
 NGINX_SITE=/etc/nginx/sites-available/outofband.conf
