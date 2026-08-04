@@ -41,9 +41,7 @@ pub static STRINGS: Strings = Strings {
         sulla rete Bitcoin*. Non tutti i software permettono di firmare senza fare Broadcast: nel \
         dubbio, consulta la loro documentazione prima di firmare. Chi usa Liana legga il riquadro \
         qui sopra.",
-    prepare_tutorials: "Aggiungeremo qui i link a tutorial di divulgatori appena saranno pronti. \
-        Se non sai come farlo con il tuo wallet, puoi aspettare e ricontrollare questa pagina più \
-        avanti.",
+    guides_heading: "Guide",
 
     load_heading: "Carica le transazioni",
     load_blurb: "Incolla o trascina PSBT firmate e transazioni grezze. Il browser invia ciascuna \

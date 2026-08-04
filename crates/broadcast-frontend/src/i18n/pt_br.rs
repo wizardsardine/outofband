@@ -43,9 +43,7 @@ pub static STRINGS: Strings = Strings {
     prepare_other_wallets: "Monte e assine sua transação normalmente, mas *não faça Broadcast para a rede Bitcoin*. Nem todo programa permite assinar sem fazer Broadcast, então consulte a \
         documentação antes de assinar se estiver em dúvida. Quem usa Liana, é só ler o quadro \
         acima.",
-    prepare_tutorials: "Vamos adicionar aqui links para tutoriais de educadores assim que \
-        estiverem prontos. Se você não souber como fazer isso na sua carteira, pode esperar e \
-        voltar a consultar esta página depois.",
+    guides_heading: "Tutoriais",
 
     load_heading: "Carregue as transações",
     load_blurb: "Cole ou solte PSBTs assinadas e transações brutas. Seu navegador envia cada uma \

@@ -1,8 +1,12 @@
 use yew::prelude::*;
 
+use crate::guides::{GUIDES, Guide};
 use crate::hooks::use_t;
 use crate::i18n::{RichStyles, rich};
-use crate::tokens::{BODY_COPY, NOTE_CARD_WARN, PROSE, PROSE_SIZE, TEXT_PRIMARY, WARNING};
+use crate::tokens::{
+    BODY_COPY, EYEBROW_TRACK, FONT_MONO, NOTE_CARD_WARN, PROSE, PROSE_SIZE, TEXT_MUTED_6A,
+    TEXT_PRIMARY, WARNING,
+};
 
 /// Sits directly above the paste box: the step before loading anything is
 /// getting a PSBT out of the wallet without broadcasting it, and in Liana
@@ -29,12 +33,10 @@ pub fn prepare_step() -> Html {
     let aside_style = format!(
         "margin:18px 0 0;font-size:{PROSE_SIZE};line-height:1.6;color:{PROSE};max-width:88ch;text-wrap:pretty"
     );
-    // Muted and last: a note about what this page will carry later, not an
-    // instruction for today. It still earns its place, because "wait and
-    // check back" is a real option here and a better one than guessing at a
-    // wallet's signing flow when guessing wrong means a public broadcast.
-    let pending_style = format!(
-        "margin:14px 0 0;font-size:14px;line-height:1.6;color:{BODY_COPY};max-width:88ch;text-wrap:pretty"
+    // Last, and quiet: someone who followed the instructions above does not
+    // need these, and someone who did not is the reader they are for.
+    let guides_label_style = format!(
+        "margin:26px 0 8px;font-size:11.5px;font-weight:500;letter-spacing:{EYEBROW_TRACK};text-transform:uppercase;color:{TEXT_MUTED_6A};font-family:{FONT_MONO}"
     );
 
     // Inside the warn card the emphasis is amber on amber, so UI names take
@@ -60,7 +62,30 @@ pub fn prepare_step() -> Html {
                 <p style={secondary_style}>{ rich(t.prepare_drafts, &card_styles) }</p>
             </div>
             <p style={aside_style}>{ rich(t.prepare_other_wallets, &prose_styles) }</p>
-            <p style={pending_style}>{t.prepare_tutorials}</p>
+            <div style={guides_label_style}>{t.guides_heading}</div>
+            { for GUIDES.iter().map(guide_row) }
         </div>
+    }
+}
+
+/// One guide as one clickable line: format, what it covers, who made it,
+/// and the language it is in. No wrapper text, so the row is the sentence.
+///
+/// The whole row is the anchor rather than just the title, because the
+/// author and the language are the parts a reader is deciding on.
+fn guide_row(g: &'static Guide) -> Html {
+    let row_style = format!(
+        "display:flex;align-items:baseline;gap:10px;padding:7px 0;font-size:14px;line-height:1.5;color:{PROSE};text-decoration:none;flex-wrap:wrap"
+    );
+    let meta_style = format!("color:{TEXT_MUTED_6A};font-size:13px");
+    html! {
+        <a key={g.href} href={g.href} target="_blank" rel="noopener noreferrer" style={row_style}>
+            // Presentational: the row already says what it is in words, so a
+            // screen reader gains nothing from "page facing up".
+            <span aria-hidden="true" style="font-size:15px;line-height:1">{g.icon}</span>
+            <span style={format!("color:{TEXT_PRIMARY};font-weight:600")}>{g.covers}</span>
+            <span style={meta_style.clone()}>{g.author}</span>
+            <span style={meta_style}>{g.lang}</span>
+        </a>
     }
 }

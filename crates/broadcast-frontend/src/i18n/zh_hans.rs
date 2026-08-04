@@ -41,8 +41,7 @@ pub static STRINGS: Strings = Strings {
     prepare_other_wallets: "照常构建并签名你的交易，但*不要向 Bitcoin 网络做 Broadcast*。\
         并非所有软件都允许只签名而不 Broadcast，拿不准就先查它的文档再签名。Liana \
         用户看上面那张卡片就够了。",
-    prepare_tutorials: "等科普作者的教程准备好后，我们会把链接放在这里。如果你不确定在自己\
-        的钱包里该怎么操作，可以先等等，之后再回来看这个页面。",
+    guides_heading: "教程",
 
     load_heading: "加载交易",
     load_blurb: "粘贴或拖入已签名的 PSBT 和原始交易。你的浏览器会把每一笔直接发给 MARA \

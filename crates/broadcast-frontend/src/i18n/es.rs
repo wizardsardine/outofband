@@ -40,9 +40,7 @@ pub static STRINGS: Strings = Strings {
     prepare_other_wallets: "Construye y firma tu transacción con normalidad, pero *no hagas Broadcast a la red de Bitcoin*. No todos los programas permiten firmar sin hacer Broadcast, así \
         que consulta su documentación antes de firmar si tienes dudas. Si usas Liana, lee la \
         tarjeta de arriba.",
-    prepare_tutorials: "Añadiremos aquí enlaces a tutoriales de divulgadores cuando estén \
-        listos. Si no sabes cómo hacerlo con tu cartera, puedes esperar y volver a consultar esta \
-        página más adelante.",
+    guides_heading: "Guías",
 
     load_heading: "Carga las transacciones",
     load_blurb: "Pega o suelta PSBT firmados y transacciones en crudo. Tu navegador envía cada \

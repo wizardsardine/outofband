@@ -37,9 +37,7 @@ pub static STRINGS: Strings = Strings {
     prepare_other_wallets: "Build and sign your transaction normally, but *do not broadcast it to \
         the Bitcoin network*. Not all software lets you sign without broadcasting, so check its \
         documentation before you sign if you are unsure. Liana users, just read the card above.",
-    prepare_tutorials: "Links to tutorials from educators will be added to this page once they \
-        are ready. If you are unsure how to do this with your wallet, you can wait and check back \
-        here later.",
+    guides_heading: "Guides",
 
     load_heading: "Load transactions",
     load_blurb: "Paste or drop signed PSBTs and raw transactions. Your browser sends each one \

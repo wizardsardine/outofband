@@ -1,5 +1,6 @@
 mod app;
 mod components;
+mod guides;
 mod hooks;
 mod i18n;
 mod queue;

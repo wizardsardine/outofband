@@ -40,9 +40,7 @@ pub static STRINGS: Strings = Strings {
         *machen Sie keinen Broadcast ins Bitcoin-Netzwerk*. Nicht jede Software erlaubt das Signieren \
         ohne Broadcast; lesen Sie im Zweifel vor dem Signieren deren Dokumentation. Liana-Nutzer \
         lesen einfach die Karte oben.",
-    prepare_tutorials: "Sobald sie fertig sind, werden hier Links zu Anleitungen von Lehrenden \
-        ergänzt. Wenn Sie unsicher sind, wie das mit Ihrer Wallet geht, können Sie warten und \
-        später wieder hier nachsehen.",
+    guides_heading: "Anleitungen",
 
     load_heading: "Transaktionen laden",
     load_blurb: "Fügen Sie signierte PSBTs und rohe Transaktionen ein oder ziehen Sie sie \

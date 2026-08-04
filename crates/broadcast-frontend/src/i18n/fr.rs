@@ -49,9 +49,7 @@ pub static STRINGS: Strings = Strings {
         portefeuilles logiciels ne permettent pas de signer sans diffuser : en cas de doute, \
         consultez la documentation du vôtre avant de signer. Utilisateurs de Liana, lisez \
         simplement l'encadré ci-dessus.",
-    prepare_tutorials: "Des liens vers des tutoriels de vulgarisateurs Bitcoin seront ajoutés \
-        ici dès qu'ils seront prêts. Si vous ne savez pas encore comment faire avec votre \
-        portefeuille, vous pouvez attendre et revenir consulter cette page plus tard.",
+    guides_heading: "Tutoriels",
 
     load_heading: "Chargez vos transactions",
     load_blurb: "Collez ou déposez ci-dessous vos PSBT signées et vos transactions brutes. \

@@ -305,7 +305,8 @@ pub struct Strings {
     pub prepare_liana: &'static str,
     pub prepare_drafts: &'static str,
     pub prepare_other_wallets: &'static str,
-    pub prepare_tutorials: &'static str,
+    /// Heads the list of third-party guides in `crate::guides`.
+    pub guides_heading: &'static str,
 
     // Load section
     pub load_heading: &'static str,
@@ -655,7 +656,6 @@ mod tests {
                 s.fee_advice,
                 s.prepare_liana,
                 s.prepare_other_wallets,
-                s.prepare_tutorials,
                 s.load_blurb,
                 s.faq_a_why,
                 s.faq_a_cpfp,
