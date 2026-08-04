@@ -48,6 +48,7 @@ pub static STRINGS: Strings = Strings {
         しないことができないソフトウェアもあるので、不安な場合は署名する前にその\
         ドキュメントを確認してください。Liana をお使いの方は上のカードだけ読めば十分です。",
     guides_heading: "ガイド",
+    guides_multilingual: "複数の言語",
 
     load_heading: "トランザクションを読み込む",
     load_blurb: "署名済みの PSBT や生トランザクションを貼り付けるか、ここにドロップして\

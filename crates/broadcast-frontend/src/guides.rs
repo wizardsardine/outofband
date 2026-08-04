@@ -1,14 +1,18 @@
 //! Third-party walkthroughs of this page, linked from the prepare step.
 //!
-//! Not in `i18n`, because none of a row is translatable: wallet names,
-//! author handles and a language's endonym read the same in every
-//! catalogue. That is what makes the list identical on all nine language
-//! versions of the page, which is the point. A reader on the French page
-//! who speaks German should be offered the German video, and the only way
-//! they can tell it is German is if the label says `Deutsch` rather than
-//! `allemand`.
+//! Every language sees every guide. A reader on the French page who also
+//! reads German should be offered the German video, so the list is not
+//! filtered by the page's language; instead each row says which language
+//! the guide itself is in.
 //!
-//! Adding a guide is one entry here and no catalogue churn.
+//! That label is the guide's own endonym, never translated: `Deutsch` tells
+//! a French, Japanese and Russian reader the same true thing, where
+//! `allemand` only works for one of them. So a row carries no translatable
+//! text at all, and adding a guide is one entry here. The exception is a
+//! guide published in many languages, which has no single endonym to name
+//! and borrows [`Strings::guides_multilingual`] instead.
+//!
+//! [`Strings::guides_multilingual`]: crate::i18n::Strings::guides_multilingual
 
 /// A guide, as one clickable row.
 pub struct Guide {
@@ -18,9 +22,10 @@ pub struct Guide {
     pub covers: &'static str,
     /// Who made it. Credit, and a signal of whether to trust it.
     pub author: &'static str,
-    /// The language the guide is *in*, as its own endonym. Never the
-    /// reader's language, and never translated.
-    pub lang: &'static str,
+    /// The language the guide is *in*, as its own endonym. `None` for a
+    /// guide its author publishes in several languages, which the page
+    /// labels from the catalogue rather than naming them all.
+    pub lang: Option<&'static str>,
     pub href: &'static str,
 }
 
@@ -30,14 +35,17 @@ pub static GUIDES: &[Guide] = &[
         icon: "📄",
         covers: "Sparrow, Liana",
         author: "ProfEduStream",
-        lang: "English",
+        // Published in several languages on planb.academy. The link keeps
+        // its `/en/` path because that is the one confirmed to exist; the
+        // site offers the reader its own locale from there.
+        lang: None,
         href: "https://planb.academy/en/tutorials/wallet/desktop/slipstream-3d024596-70b8-4161-96c8-eb5bea8f3228",
     },
     Guide {
         icon: "▶️",
         covers: "Liana",
         author: "Chris",
-        lang: "Deutsch",
+        lang: Some("Deutsch"),
         href: "https://www.youtube.com/watch?v=PnkJYQkQY3Y",
     },
 ];

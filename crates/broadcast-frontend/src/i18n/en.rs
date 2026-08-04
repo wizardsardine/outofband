@@ -38,6 +38,7 @@ pub static STRINGS: Strings = Strings {
         the Bitcoin network*. Not all software lets you sign without broadcasting, so check its \
         documentation before you sign if you are unsure. Liana users, just read the card above.",
     guides_heading: "Guides",
+    guides_multilingual: "Several languages",
 
     load_heading: "Load transactions",
     load_blurb: "Paste or drop signed PSBTs and raw transactions. Your browser sends each one \

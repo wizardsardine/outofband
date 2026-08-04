@@ -63,7 +63,7 @@ pub fn prepare_step() -> Html {
             </div>
             <p style={aside_style}>{ rich(t.prepare_other_wallets, &prose_styles) }</p>
             <div style={guides_label_style}>{t.guides_heading}</div>
-            { for GUIDES.iter().map(guide_row) }
+            { for GUIDES.iter().map(|g| guide_row(g, t.guides_multilingual)) }
         </div>
     }
 }
@@ -73,7 +73,7 @@ pub fn prepare_step() -> Html {
 ///
 /// The whole row is the anchor rather than just the title, because the
 /// author and the language are the parts a reader is deciding on.
-fn guide_row(g: &'static Guide) -> Html {
+fn guide_row(g: &'static Guide, multilingual: &'static str) -> Html {
     let row_style = format!(
         "display:flex;align-items:baseline;gap:10px;padding:7px 0;font-size:14px;line-height:1.5;color:{PROSE};text-decoration:none;flex-wrap:wrap"
     );
@@ -85,7 +85,7 @@ fn guide_row(g: &'static Guide) -> Html {
             <span aria-hidden="true" style="font-size:15px;line-height:1">{g.icon}</span>
             <span style={format!("color:{TEXT_PRIMARY};font-weight:600")}>{g.covers}</span>
             <span style={meta_style.clone()}>{g.author}</span>
-            <span style={meta_style}>{g.lang}</span>
+            <span style={meta_style}>{g.lang.unwrap_or(multilingual)}</span>
         </a>
     }
 }

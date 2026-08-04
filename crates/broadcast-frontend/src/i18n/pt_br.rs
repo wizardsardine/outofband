@@ -44,6 +44,7 @@ pub static STRINGS: Strings = Strings {
         documentação antes de assinar se estiver em dúvida. Quem usa Liana, é só ler o quadro \
         acima.",
     guides_heading: "Tutoriais",
+    guides_multilingual: "Vários idiomas",
 
     load_heading: "Carregue as transações",
     load_blurb: "Cole ou solte PSBTs assinadas e transações brutas. Seu navegador envia cada uma \

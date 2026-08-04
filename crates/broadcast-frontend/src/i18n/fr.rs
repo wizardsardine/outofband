@@ -50,6 +50,7 @@ pub static STRINGS: Strings = Strings {
         consultez la documentation du vôtre avant de signer. Utilisateurs de Liana, lisez \
         simplement l'encadré ci-dessus.",
     guides_heading: "Tutoriels",
+    guides_multilingual: "Plusieurs langues",
 
     load_heading: "Chargez vos transactions",
     load_blurb: "Collez ou déposez ci-dessous vos PSBT signées et vos transactions brutes. \

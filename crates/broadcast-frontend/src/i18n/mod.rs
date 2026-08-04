@@ -307,6 +307,9 @@ pub struct Strings {
     pub prepare_other_wallets: &'static str,
     /// Heads the list of third-party guides in `crate::guides`.
     pub guides_heading: &'static str,
+    /// Stands in for a guide's language when its author publishes it in
+    /// several. Every other guide names its language in its own words.
+    pub guides_multilingual: &'static str,
 
     // Load section
     pub load_heading: &'static str,

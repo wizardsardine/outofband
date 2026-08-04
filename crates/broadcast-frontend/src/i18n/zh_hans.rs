@@ -42,6 +42,7 @@ pub static STRINGS: Strings = Strings {
         并非所有软件都允许只签名而不 Broadcast，拿不准就先查它的文档再签名。Liana \
         用户看上面那张卡片就够了。",
     guides_heading: "教程",
+    guides_multilingual: "多种语言",
 
     load_heading: "加载交易",
     load_blurb: "粘贴或拖入已签名的 PSBT 和原始交易。你的浏览器会把每一笔直接发给 MARA \

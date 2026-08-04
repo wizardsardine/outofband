@@ -41,6 +41,7 @@ pub static STRINGS: Strings = Strings {
         ohne Broadcast; lesen Sie im Zweifel vor dem Signieren deren Dokumentation. Liana-Nutzer \
         lesen einfach die Karte oben.",
     guides_heading: "Anleitungen",
+    guides_multilingual: "Mehrere Sprachen",
 
     load_heading: "Transaktionen laden",
     load_blurb: "Fügen Sie signierte PSBTs und rohe Transaktionen ein oder ziehen Sie sie \
