@@ -1,5 +1,10 @@
-//! Simplified Chinese. Drafted, not yet reviewed by a native speaker: see
+//! Simplified Chinese. Reviewed by Sherry, so it carries no AI notice: see
 //! [`super::Lang::reviewed`].
+//!
+//! The review reordered the headline and the load blurb to close on
+//! 被直接挖出 rather than open with it, and kept the space in 公共 mempool
+//! that the corrections dropped, since every other Latin term in the file
+//! is spaced.
 //!
 //! No number inflection, so every counted message uses
 //! [`super::Plurals::single`]. No CJK font is downloaded either: the stack
@@ -25,10 +30,10 @@ pub static STRINGS: Strings = Strings {
         [这篇博客文章 ›](https://wizardsardine.com/blog/coldcard-rng-vulnerability/)",
 
     hero_line_one: "让你的交易",
-    hero_line_two: "被直接挖出，不经过公共 mempool。",
+    hero_line_two: "不经过公共 mempool，被直接挖出。",
 
     fee_eyebrow: "最低可接受 Fee rate",
-    fee_sentence: "低于这个 Fee rate 的交易预计不会被挖出。高于它也并不等于保证。",
+    fee_sentence: "低于这个 Fee rate 的交易预计不会被挖出。高于它，也并不保证被挖出。",
     fee_stale: "这个 Fee rate 可能已经过时。",
     fee_advice: "这个下限是*动态*的，会随需求变化，所以请用*明显高于*下限的 Fee rate \
         构建交易，否则它可能在被挖出之前就低于下限了。",
@@ -46,7 +51,7 @@ pub static STRINGS: Strings = Strings {
 
     load_heading: "加载交易",
     load_blurb: "粘贴或拖入已签名的 PSBT 和原始交易。你的浏览器会把每一笔直接发给 MARA \
-        Slipstream，由它挖出，全程不碰公共 mempool。",
+        Slipstream，由它挖出，全程不进入公共 mempool。",
     load_placeholder_or: "或者",
     load_placeholder_drop: "或者把文件拖到这里",
     load_accepts: "文件、文件夹或压缩包：.txt .psbt .txn .tar .tar.gz .zip",
@@ -124,7 +129,7 @@ pub static STRINGS: Strings = Strings {
     faq_a_risks: "你必须信任 Slipstream 背后的公司 MARA 不会自己对你的交易发动这种攻击。\
         与公开广播、让任何人都能发动攻击相比，这是一个可以接受的风险。",
     faq_q_domain: "这个页面为什么放在 Wizardsardine 的域名下？",
-    faq_a_domain: "我们（Wizardsardine）是一家安全公司，负责维护 Liana 钱包\
+    faq_a_domain: "Wizardsardine 是一家安全公司，负责维护 Liana 钱包\
         （[lianawallet.com](https://lianawallet.com)）。在有这个工具之前，Liana \
         用户没有简单的办法把交易发给 Slipstream，所以这是为他们提供的服务，同时也向社区\
         其他人开放。",

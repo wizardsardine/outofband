@@ -133,9 +133,9 @@ impl Lang {
             Lang::En => true,
             // Reviewed line by line by ProfEduStream, 2026-08.
             Lang::Fr => true,
-            Lang::De | Lang::Es | Lang::It | Lang::PtBr | Lang::Ru | Lang::Ja | Lang::ZhHans => {
-                false
-            }
+            // Reviewed by Sherry, 2026-08.
+            Lang::ZhHans => true,
+            Lang::De | Lang::Es | Lang::It | Lang::PtBr | Lang::Ru | Lang::Ja => false,
         }
     }
 

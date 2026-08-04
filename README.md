@@ -33,11 +33,11 @@ language-keyed because Chinese and Japanese want different shapes for the
 same Han characters.
 
 All nine are offered, in a picker at the right of the sticky bar at the top
-of the page. The eight non-English ones are LLM drafts marked unreviewed in
-`Lang::reviewed`, and while a language is unreviewed the page shows a notice
-saying so, points at English as authoritative, and offers a button back to
-it. Flipping the flag removes that notice, so flip it in the same commit
-that records who reviewed the language.
+of the page. Most are LLM drafts marked unreviewed in `Lang::reviewed`, and
+while a language is unreviewed the page shows a notice saying so, points at
+English as authoritative, and offers a button back to it. Flipping the flag
+removes that notice, so flip it in the same commit that records who reviewed
+the language.
 
 Terms of art stay English in every language: `PSBT`, `mempool`,
 `Broadcast`, `Fee rate`, `Export`, `Drafts and Approvals` and the rest. The
