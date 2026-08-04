@@ -1,0 +1,8 @@
+{
+  "name": "outofband-social",
+  "private": true,
+  "type": "module",
+  "description": "Regenerates assets/og.png and the raster icons from sources in this repository.",
+  "scripts": { "render": "node render.mjs" },
+  "dependencies": { "playwright": "^1.49.0" }
+}

@@ -14,9 +14,10 @@ what to do in that case, and the page says so at the top.
 There is no backend. Parsing, finalization, fee maths and the submission
 itself all happen in the browser, and the submission goes straight from
 the tab to `slipstream.mara.com`. A deployment is nginx serving a wasm
-bundle and nothing else, so nothing pasted into the page ever reaches this
-project's host. See [Honest limitations](#honest-limitations) before
-relying on this for anything.
+bundle, so nothing pasted into the page ever reaches this project's host.
+The page does load one third-party script, for [analytics](#analytics).
+See [Honest limitations](#honest-limitations) before relying on this for
+anything.
 
 ## Languages
 
@@ -32,7 +33,7 @@ language-keyed because Chinese and Japanese want different shapes for the
 same Han characters.
 
 All nine are offered, in a picker at the right of the sticky bar at the top
-of the page. The five non-English ones are LLM drafts marked unreviewed in
+of the page. The eight non-English ones are LLM drafts marked unreviewed in
 `Lang::reviewed`, and while a language is unreviewed the page shows a notice
 saying so, points at English as authoritative, and offers a button back to
 it. Flipping the flag removes that notice, so flip it in the same commit
@@ -43,6 +44,26 @@ Terms of art stay English in every language: `PSBT`, `mempool`,
 glossary is at the top of `i18n/mod.rs` and a test enforces it. Bitcoiners
 run English software, and a reader hunting for the Broadcast button is not
 helped by being told about "diffusion".
+
+## Analytics
+
+Plausible, a privacy-preserving analytics service, in the `<head>` of
+`index.html`. The script URL carries our site key: change or remove it on
+another deployment.
+
+## Social card and icons
+
+`assets/og.png` is the 1200×630 Open Graph and Twitter card;
+`assets/favicon.svg` is the mark, with `favicon-32.png` and
+`apple-touch-icon.png` rendered from it. Regenerate all three from
+`tools/social/og-template.html` and the SVG:
+
+```
+cd tools/social && npm install && node render.mjs
+```
+
+`og:url`, `og:image` and `twitter:image` in `index.html` are absolute and
+point at our host: change them on another deployment.
 
 ## Development
 

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Outofband">
+  <!-- One arrow, going straight through. The page is about a transaction
+       taking the direct path to a miner instead of being gossiped around the
+       network, and an arrow is the only version of that idea still legible
+       at 16px. The gradient is the page's own teal-to-violet ramp. -->
+  <defs>
+    <linearGradient id="ob" x1="10" y1="54" x2="54" y2="10" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#61ffe1"/>
+      <stop offset=".55" stop-color="#5572f5"/>
+      <stop offset="1" stop-color="#a341ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#000"/>
+  <g fill="none" stroke="url(#ob)" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M13 32h26"/>
+    <path d="M35.5 19.5 48 32 35.5 44.5"/>
+  </g>
+</svg>

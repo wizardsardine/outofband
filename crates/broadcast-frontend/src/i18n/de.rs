@@ -104,9 +104,12 @@ pub static STRINGS: Strings = Strings {
         Transaktion sicher.",
     faq_q_where: "Wohin geht das, was ich einfüge, tatsächlich?",
     faq_a_where: "Dekodieren, Finalisieren und Gebührenberechnung laufen alle in Ihrem Browser, \
-        und diese Seite hat keinen Server dazwischen. Das Einzige, was diese Seite (und Ihren \
-        Rechner) je verlässt, ist die finalisierte Transaktion als Hex, direkt von Ihrem Browser \
-        an MARA Slipstream, wenn Sie auf Senden drücken.",
+        und diese Seite hat keinen Server dazwischen. Zwei Dinge verlassen diese Seite: die \
+        finalisierte Transaktion als Hex, direkt von Ihrem Browser an MARA Slipstream, wenn Sie \
+        auf Senden drücken, und ein anonymer Seitenaufruf, gezählt von Plausible. Plausible setzt \
+        keine Cookies und erfasst nichts, was Sie identifiziert, sieht aber wie MARA die \
+        IP-Adresse, von der aus Sie sich verbinden. Nutzen Sie Tor oder ein VPN, wenn Ihnen das \
+        wichtig ist. Was Sie einfügen, ist nie Teil von beidem.",
     faq_q_mara_learns: "Was erfährt MARA über mich?",
     faq_a_mara_learns: "Die Transaktionsdaten und Ihre IP-Adresse. Ihr Browser spricht direkt mit \
         MARA, die Verbindung ist also Ihre, und MARA sieht die Adresse, von der aus Sie surfen. \
