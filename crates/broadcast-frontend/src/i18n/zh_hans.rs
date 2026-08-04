@@ -130,6 +130,7 @@ pub static STRINGS: Strings = Strings {
         其他人开放。",
 
     footer_built_by: "由 [Wizardsardine](https://wizardsardine.com) 打造",
+    footer_source: "源代码",
     footer_disclosure: "安全披露",
     footer_slipstream_terms: "Slipstream 条款",
 

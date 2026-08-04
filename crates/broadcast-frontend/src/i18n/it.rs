@@ -140,6 +140,7 @@ pub static STRINGS: Strings = Strings {
         aperto a tutti gli altri.",
 
     footer_built_by: "Realizzato da [Wizardsardine](https://wizardsardine.com)",
+    footer_source: "Codice sorgente",
     footer_disclosure: "Avviso di sicurezza",
     footer_slipstream_terms: "Condizioni Slipstream",
 

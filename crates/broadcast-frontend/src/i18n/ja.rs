@@ -149,6 +149,7 @@ pub static STRINGS: Strings = Strings {
         そのための仕組みであり、他のコミュニティにも開放しています。",
 
     footer_built_by: "制作: [Wizardsardine](https://wizardsardine.com)",
+    footer_source: "ソースコード",
     footer_disclosure: "セキュリティ開示",
     footer_slipstream_terms: "Slipstream の利用条件",
 
