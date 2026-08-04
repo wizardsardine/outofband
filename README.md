@@ -20,11 +20,18 @@ relying on this for anything.
 
 ## Languages
 
-Six catalogues live in `crates/broadcast-frontend/src/i18n/`, one file per
-language. `Strings` is a struct, so adding a string will not compile until
-every language has one; that is the point.
+Nine catalogues live in `crates/broadcast-frontend/src/i18n/`, one file per
+language: English, German, Spanish, French, Italian, Portuguese (Brazil),
+Russian, Japanese and Simplified Chinese. `Strings` is a struct, so adding a
+string will not compile until every language has one; that is the point.
 
-All six are offered, in a picker at the right of the sticky bar at the top
+No font ships for Japanese or Chinese. IBM Plex has no CJK coverage, and the
+alternative to a system face is tens of megabytes, so the stack falls through
+to `var(--ws-cjk)`, which `style.css` picks from `<html lang>`. It is
+language-keyed because Chinese and Japanese want different shapes for the
+same Han characters.
+
+All nine are offered, in a picker at the right of the sticky bar at the top
 of the page. The five non-English ones are LLM drafts marked unreviewed in
 `Lang::reviewed`, and while a language is unreviewed the page shows a notice
 saying so, points at English as authoritative, and offers a button back to

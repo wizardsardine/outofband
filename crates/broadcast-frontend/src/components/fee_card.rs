@@ -4,8 +4,8 @@ use crate::hooks::fee::FeeSnapshot;
 use crate::hooks::use_t;
 use crate::i18n::{RichStyles, rich};
 use crate::tokens::{
-    BORDER_STRONG, FEE_NUMBER_GRADIENT, NOTE_CARD_WARN, PROSE, PROSE_SIZE, RULE, TEXT_MUTED_7B,
-    TEXT_SECONDARY, WARNING,
+    BORDER_STRONG, EYEBROW_TRACK, FEE_NUMBER_GRADIENT, FONT_MONO, NOTE_CARD_WARN, PROSE,
+    PROSE_SIZE, RULE, TEXT_MUTED_7B, TEXT_SECONDARY, WARNING,
 };
 
 #[derive(Properties, PartialEq)]
@@ -26,10 +26,9 @@ pub fn fee_card(props: &FeeCardProps) -> Html {
     let card_style = fee_card_style(props.mobile);
     let num_style = fee_num_style(props.mobile, stale);
     let eyebrow_style = format!(
-        "font-size:12px;font-weight:500;letter-spacing:1.6px;text-transform:uppercase;color:{TEXT_MUTED_7B}"
+        "font-size:12px;font-weight:500;letter-spacing:{EYEBROW_TRACK};text-transform:uppercase;color:{TEXT_MUTED_7B}"
     );
-    let unit_style =
-        format!("font-family:'IBM Plex Mono',monospace;font-size:22px;color:{TEXT_SECONDARY}");
+    let unit_style = format!("font-family:{FONT_MONO};font-size:22px;color:{TEXT_SECONDARY}");
     let rule_style = format!("height:1px;background:{RULE};margin:26px 0 20px");
     let sentence_style =
         format!("margin:0;font-size:{PROSE_SIZE};line-height:1.6;color:{PROSE};text-wrap:pretty");
@@ -91,7 +90,7 @@ fn fee_num_style(mobile: bool, stale: bool) -> String {
     };
     let opacity = if stale { "opacity:.5;" } else { "" };
     format!(
-        "font-family:'IBM Plex Mono',monospace;font-weight:700;line-height:.86;background:{FEE_NUMBER_GRADIENT};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;{opacity}{size}"
+        "font-family:{FONT_MONO};font-weight:700;line-height:.86;background:{FEE_NUMBER_GRADIENT};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;{opacity}{size}"
     )
 }
 

@@ -711,9 +711,36 @@ where it is a glyph standing in for a number rather than punctuation.
 
 ### Languages
 
-The page carries six catalogues: English plus German, Spanish, French,
-Portuguese (Brazil) and Russian, the languages this tool's readership is
-most likely to want. `src/i18n/` holds one file each.
+The page carries nine catalogues: English plus German, Spanish, French,
+Italian, Portuguese (Brazil), Russian, Japanese and Simplified Chinese.
+`src/i18n/` holds one file each.
+
+**No font is downloaded for CJK.** IBM Plex Sans has no CJK coverage, so
+the choice is not "Plex CJK versus a fallback" but "tens of megabytes of
+IBM Plex Sans SC/JP versus a system face". A 300 KB page does not grow to
+that for two languages, and a build-time subset would need tooling this
+repo does not have plus regeneration on every copy change, failing silently
+when a translator uses a character outside the subset. So `tokens::FONT_SANS`
+ends `'IBM Plex Sans', var(--ws-cjk), system-ui, sans-serif`, and font
+fallback being per glyph means a Latin page never reaches the variable.
+
+`--ws-cjk` is keyed on `<html lang>` in `style.css` rather than being one
+long list, because Chinese and Japanese share Han characters with different
+expected shapes: a list led by a Chinese face renders Japanese text in
+Chinese forms, which is immediately wrong to a Japanese reader. `zh` gets
+PingFang SC and Microsoft YaHei first, `ja` gets Hiragino Sans and Yu
+Gothic.
+
+`--ws-eyebrow-track` works the same way. Letter-spacing is a Latin device;
+applied to Han or Kana it prises apart characters that are already square
+and evenly set, so the uppercase eyebrows drop to `.02em` on a CJK page.
+Tokenising it also normalised the 1.2/1.4/1.6/1.8px the eyebrows had
+drifted to, which this section always described as a single value.
+
+Chinese and Japanese do not inflect for number, so their counted messages
+use `Plurals::single`. Every `zh-*` tag lands on Simplified, including
+`zh-TW`: Traditional readers get Simplified rather than English, the same
+trade `pt-PT` makes against `pt-BR`.
 
 `Strings` is a **struct of fields, not a map**. A missing translation is a
 compile error rather than a blank space a user finds; adding a string means

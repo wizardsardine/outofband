@@ -1,7 +1,7 @@
 use yew::prelude::*;
 
 use crate::hooks::use_t;
-use crate::tokens::{BODY_COPY, BORDER_STRONG, ERROR_RED, TEXT_MUTED_7B, TEXT_PRIMARY};
+use crate::tokens::{BODY_COPY, BORDER_STRONG, ERROR_RED, FONT_MONO, TEXT_MUTED_7B, TEXT_PRIMARY};
 
 /// PSBTs refused at load time because `tx-core` could not finalize them
 /// (PLAN.md section 1): the one thing this UI refuses on the user's behalf,
@@ -41,7 +41,7 @@ pub fn finalization_modal(props: &FinalizationModalProps) -> Html {
 
 fn refused_row((name, reason): &(String, String)) -> Html {
     html! {
-        <li style={format!("font-family:'IBM Plex Mono',monospace;font-size:13px;color:{TEXT_PRIMARY}")}>
+        <li style={format!("font-family:{FONT_MONO};font-size:13px;color:{TEXT_PRIMARY}")}>
             <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{name.clone()}</div>
             <div style={format!("margin-top:3px;color:{TEXT_MUTED_7B};font-size:11.5px;line-height:1.45")}>{reason.clone()}</div>
         </li>

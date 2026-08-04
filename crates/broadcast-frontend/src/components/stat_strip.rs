@@ -4,8 +4,8 @@ use crate::hooks::fee::FeeSnapshot;
 use crate::hooks::use_lang;
 use crate::queue::{self, QueueItem};
 use crate::tokens::{
-    self, ACCENT_TEAL_BRIGHT, BORDER_STRONG, ERROR_RED, RULE, TEXT_MUTED_7B, TEXT_PRIMARY,
-    TEXT_SECONDARY,
+    self, ACCENT_TEAL_BRIGHT, BORDER_STRONG, ERROR_RED, EYEBROW_TRACK, FONT_MONO, RULE,
+    TEXT_MUTED_7B, TEXT_PRIMARY, TEXT_SECONDARY,
 };
 
 #[derive(Properties, PartialEq)]
@@ -64,8 +64,8 @@ pub fn stat_strip(props: &StatStripProps) -> Html {
 fn stat_cell(index: usize, mobile: bool, label: &str, value: &str, value_color: &str) -> Html {
     html! {
         <div style={cell_style(index, mobile)}>
-            <div style={format!("font-size:11px;font-weight:500;letter-spacing:1.4px;text-transform:uppercase;color:{TEXT_MUTED_7B}")}>{label.to_string()}</div>
-            <div style={format!("font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600;margin-top:6px;color:{value_color}")}>{value.to_string()}</div>
+            <div style={format!("font-size:11px;font-weight:500;letter-spacing:{EYEBROW_TRACK};text-transform:uppercase;color:{TEXT_MUTED_7B}")}>{label.to_string()}</div>
+            <div style={format!("font-family:{FONT_MONO};font-size:28px;font-weight:600;margin-top:6px;color:{value_color}")}>{value.to_string()}</div>
         </div>
     }
 }

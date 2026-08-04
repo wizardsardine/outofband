@@ -3,7 +3,8 @@ use yew::prelude::*;
 use crate::hooks::use_t;
 use crate::i18n::{RichStyles, Strings, rich};
 use crate::tokens::{
-    ACCENT_TEAL, BORDER_STRONG, HAIRLINE, PROSE, PROSE_SIZE, TEXT_MUTED_6A, TEXT_MUTED_7B,
+    ACCENT_TEAL, BORDER_STRONG, EYEBROW_TRACK, HAIRLINE, PROSE, PROSE_SIZE, TEXT_MUTED_6A,
+    TEXT_MUTED_7B,
 };
 
 #[function_component(Faq)]
@@ -14,7 +15,7 @@ pub fn faq() -> Html {
     let last = entries.len() - 1;
 
     let eyebrow_style = format!(
-        "font-size:13px;font-weight:500;letter-spacing:1.6px;text-transform:uppercase;color:{TEXT_MUTED_7B};margin-bottom:26px"
+        "font-size:13px;font-weight:500;letter-spacing:{EYEBROW_TRACK};text-transform:uppercase;color:{TEXT_MUTED_7B};margin-bottom:26px"
     );
     let card_style = format!(
         "border:1px solid {BORDER_STRONG};border-radius:22px 2px 22px 2px;background:#0c0c0c;overflow:hidden"

@@ -5,6 +5,7 @@ use crate::components::{
     QueueTable, StatStrip, TranslationNotice,
 };
 use crate::hooks::{LangHandle, use_fee, use_file_load, use_lang_state, use_mobile, use_queue};
+use crate::tokens::FONT_SANS;
 
 #[function_component(App)]
 pub fn app() -> Html {
@@ -17,7 +18,7 @@ pub fn app() -> Html {
 
     html! {
         <ContextProvider<LangHandle> context={lang}>
-        <div style="min-height:100vh;background:#000;color:#f4f4f4;font-family:'IBM Plex Sans',system-ui,sans-serif">
+        <div style={format!("min-height:100vh;background:#000;color:#f4f4f4;font-family:{FONT_SANS}")}>
             <DisclosureStrip />
             <TranslationNotice />
             <div style="padding:0 6%">

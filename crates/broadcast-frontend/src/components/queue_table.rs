@@ -4,7 +4,7 @@ use crate::components::queue_row::QueueRow;
 use crate::hooks::fee::FeeSnapshot;
 use crate::hooks::use_t;
 use crate::queue::QueueItem;
-use crate::tokens::{BORDER_STRONG, CARD_NESTED, QUEUE_ROW_COLUMNS, TEXT_MUTED_6A};
+use crate::tokens::{BORDER_STRONG, CARD_NESTED, EYEBROW_TRACK, QUEUE_ROW_COLUMNS, TEXT_MUTED_6A};
 
 #[derive(Properties, PartialEq)]
 pub struct QueueTableProps {
@@ -58,6 +58,6 @@ pub fn queue_table(props: &QueueTableProps) -> Html {
 
 fn table_head_style() -> String {
     format!(
-        "display:grid;grid-template-columns:{QUEUE_ROW_COLUMNS};gap:16px;align-items:center;padding:12px 26px;border-bottom:1px solid #1f1f1f;background:#060606;font-size:10.5px;font-weight:500;letter-spacing:1.2px;text-transform:uppercase;color:{TEXT_MUTED_6A}"
+        "display:grid;grid-template-columns:{QUEUE_ROW_COLUMNS};gap:16px;align-items:center;padding:12px 26px;border-bottom:1px solid #1f1f1f;background:#060606;font-size:10.5px;font-weight:500;letter-spacing:{EYEBROW_TRACK};text-transform:uppercase;color:{TEXT_MUTED_6A}"
     )
 }
