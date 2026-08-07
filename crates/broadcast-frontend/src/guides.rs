@@ -48,4 +48,11 @@ pub static GUIDES: &[Guide] = &[
         lang: Some("Deutsch"),
         href: "https://www.youtube.com/watch?v=PnkJYQkQY3Y",
     },
+    Guide {
+        icon: "▶️",
+        covers: "Liana",
+        author: "BTC Andres",
+        lang: Some("Español"),
+        href: "https://www.youtube.com/watch?v=mQYk4ccqkTk",
+    },
 ];
