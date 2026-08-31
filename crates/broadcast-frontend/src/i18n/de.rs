@@ -1,52 +1,52 @@
-//! German. Drafted, not yet reviewed by a native speaker: see
+//! German. Reviewed by a @maggo83: see
 //! [`super::Lang::reviewed`].
 
 use super::{Plurals, Strings};
 
 pub static STRINGS: Strings = Strings {
-    page_title: "Outofband: Übertragung direkt an den Miner",
+    page_title: "Outofband: Übertragung direkt an einen Miner",
     lang_picker_label: "Sprache",
-    ai_notice: "Diese Übersetzung stammt von einer KI und wurde nicht von einem \
+    ai_notice: "Diese Übersetzung stammt ursprünglich von einer KI und wurde inzwischen von einem \
         Muttersprachler geprüft. Wo sie vom Englischen abweicht, gilt das Englische.",
     ai_notice_action: "Read in English",
 
     disclosure_label: "Sicherheitshinweis",
-    disclosure_link: "Coldcard-RNG-Schwachstelle, und warum Sie dieses Werkzeug brauchen könnten",
+    disclosure_link: "Coldcard-RNG-Schwachstelle, und warum du dieses Tool brauchen könntest",
 
-    context_audience: "Dieses Werkzeug ist nur für bestimmte Nutzer wichtig: vor allem für \
+    context_audience: "Dieses Tool ist nur für bestimmte Nutzer wichtig: vor allem für \
         *Liana*, *Miniscript* oder bestimmte *Multisig*-Wallets.",
     context_not_recommended: "Für akut gefährdete Wallets wird dieses Werkzeug !NICHT! empfohlen, \
         wie in [diesem Blogbeitrag ›](https://wizardsardine.com/blog/coldcard-rng-vulnerability/) \
         beschrieben",
 
-    hero_line_one: "Lassen Sie Ihre Transaktionen",
-    hero_line_two: "direkt schürfen, ohne den öffentlichen Mempool.",
+    hero_line_one: "Lassen deine Transaktionen",
+    hero_line_two: "direkt minen, ohne den öffentlichen Mempool.",
 
     fee_eyebrow: "Mindestens akzeptierte Fee rate",
-    fee_sentence: "Alles unterhalb dieser Fee rate wird voraussichtlich nicht geschürft. Sie zu \
-        erreichen ist aber auch keine Garantie.",
-    fee_stale: "Diese Rate ist möglicherweise veraltet.",
-    fee_advice: "Diese Untergrenze ist *dynamisch*. Sie bewegt sich mit der Nachfrage: Bauen Sie \
-        Ihre Transaktion daher mit einer *deutlich höheren* Fee rate als der Untergrenze, sonst \
-        erreicht sie diese womöglich nicht mehr, bevor sie geschürft wird.",
+    fee_sentence: "Alles unterhalb dieser Fee rate wird voraussichtlich nicht gemined. Sie zu \
+        überschreiten bietet aber auch keine Garantie.",
+    fee_stale: "Diese Fee rate ist möglicherweise veraltet.",
+    fee_advice: "Dies ist eine *dynamische* Untergrenze. Sie bewegt sich mit der Nachfrage: Erzeuge deine \
+        Transaktion daher mit einer *deutlich höheren* Fee rate als der Untergrenze, sonst \
+        wird sie womöglich nicht mehr, inkludiert.",
 
     prepare_heading: "Transaktion vorbereiten",
     prepare_liana: "Liana-Nutzer bereiten ihre Transaktion wie gewohnt vor und signieren sie, \
-        drücken aber !AUF KEINEN FALL! die Schaltfläche *Broadcast*. Klicken Sie nach dem \
-        Signieren stattdessen auf *Export*. Diese Datei laden Sie im nächsten Schritt.",
-    prepare_drafts: "Falls Sie bereits signiert, die PSBT-Datei aber nicht gespeichert haben, \
-        finden Sie die Transaktion unter *Drafts and Approvals* wieder.",
-    prepare_other_wallets: "Erstellen und signieren Sie Ihre Transaktion wie gewohnt, aber \
-        *machen Sie keinen Broadcast ins Bitcoin-Netzwerk*. Nicht jede Software erlaubt das Signieren \
-        ohne Broadcast; lesen Sie im Zweifel vor dem Signieren deren Dokumentation. Liana-Nutzer \
+        drücken aber !AUF KEINEN FALL! die Schaltfläche *Broadcast*. Klicke nach dem \
+        Signieren stattdessen auf *Export*. Die so erstellte Datei lädst du im nächsten Schritt hoch.",
+    prepare_drafts: "Falls du die PSBT-Datei bereits signiert aber nicht gespeichert hast, \
+        findest du die Transaktion unter *Drafts and Approvals* wieder.",
+    prepare_other_wallets: "Erstelle und signiere deine Transaktion wie gewohnt, aber \
+        *mache keinen Broadcast ins Bitcoin-Netzwerk*. Nicht jede Software erlaubt das Signieren \
+        ohne Broadcast; lies im Zweifel vor dem Signieren die Dokumentation der Software. Liana-Nutzer \
         lesen einfach die Karte oben.",
     guides_heading: "Anleitungen",
     guides_multilingual: "Mehrere Sprachen",
 
     load_heading: "Transaktionen laden",
-    load_blurb: "Fügen Sie signierte PSBTs und rohe Transaktionen ein oder ziehen Sie sie \
-        hierher. Ihr Browser sendet jede einzelne direkt an MARA Slipstream, das sie schürft, \
-        ohne den öffentlichen Mempool je zu berühren.",
+    load_blurb: "Füge signierte PSBTs und rohe Transaktionen ein oder ziehe sie \
+        hierher. Dein Browser sendet jede einzelne direkt an MARA Slipstream, wo sie gemined \
+        werden, ohne den öffentlichen Mempool je zu berühren.",
     load_placeholder_or: "oder",
     load_placeholder_drop: "oder Datei hierher ziehen",
     load_accepts: "Dateien, Ordner oder Archive: .txt .psbt .txn .tar .tar.gz .zip",
@@ -74,7 +74,7 @@ pub static STRINGS: Strings = Strings {
     btn_retry: "Erneut",
     row_remove_title: "Aus der Warteschlange entfernen",
     row_missing_value: "Die Eingangsbeträge dieser Transaktion sind nicht bekannt, daher lässt \
-        sich die Gebühr lokal nicht berechnen. Geben Sie den insgesamt ausgegebenen Betrag ein, \
+        sich die Gebühr lokal nicht berechnen. Gib den insgesamt ausgegebenen Betrag ein, \
         um sie vor dem Senden zu prüfen.",
     row_total_placeholder: "Gesamter Eingangsbetrag (sats)",
 
@@ -89,49 +89,49 @@ pub static STRINGS: Strings = Strings {
     status_below_floor: "Unter Untergrenze",
 
     modal_title: "PSBT kann nicht finalisiert werden",
-    modal_instruction: "Korrigieren Sie die PSBT und laden Sie sie erneut.",
+    modal_instruction: "Korrigiere die PSBT und lade sie erneut.",
     btn_close: "Schließen",
 
-    faq_eyebrow: "Fragen, die Sie vorher stellen sollten",
-    faq_q_why: "Wofür ist dieses Werkzeug gut?",
-    faq_a_why: "Ein normaler Broadcast verteilt Ihre Transaktion an jeden Bitcoin-Knoten im \
+    faq_eyebrow: "Fragen, die du vor Benutzung stellen solltest",
+    faq_q_why: "Wofür ist dieses Tool gut?",
+    faq_a_why: "Ein normaler Broadcast verteilt deine Transaktion an jeden Bitcoin-Knoten im \
         Netzwerk, bevor sie geschürft wird. Wenn jemand einen Schlüssel besitzt, der dieselben \
         Coins ausgeben kann, kann diese Person die Transaktion ersetzen und die Coins stehlen, \
-        bevor sie geschürft wird. Slipstream (was dieses Werkzeug nutzt) überspringt diese \
-        Verteilung: Die Transaktion geht an einen einzigen Miner, ohne an den Rest des Netzwerks \
-        gesendet zu werden. Das Schürfen dauert länger, dafür sind Sie vor dem Ersetzen der \
+        bevor sie gemined wird. Slipstream (welches dieses Werkzeug nutzt) überspringt diese \
+        Verbreitung: Die Transaktion geht an einen einzigen Miner, ohne an den Rest des Netzwerks \
+        gesendet zu werden. Das Schürfen dauert länger, dafür bist du vor dem Ersetzen der \
         Transaktion sicher.",
     faq_q_where: "Wohin geht das, was ich einfüge, tatsächlich?",
-    faq_a_where: "Dekodieren, Finalisieren und Gebührenberechnung laufen alle in Ihrem Browser, \
+    faq_a_where: "Dekodieren, Finalisieren und Gebührenberechnung laufen alle in deinem Browser, \
         und diese Seite hat keinen Server dazwischen. Zwei Dinge verlassen diese Seite: die \
-        finalisierte Transaktion als Hex, direkt von Ihrem Browser an MARA Slipstream, wenn Sie \
-        auf Senden drücken, und ein anonymer Seitenaufruf, gezählt von Plausible. Plausible setzt \
-        keine Cookies und erfasst nichts, was Sie identifiziert, sieht aber wie MARA die \
-        IP-Adresse, von der aus Sie sich verbinden. Nutzen Sie Tor oder ein VPN, wenn Ihnen das \
-        wichtig ist. Was Sie einfügen, ist nie Teil von beidem.",
+        finalisierte Transaktion als Hex, direkt von deinem Browser an MARA Slipstream, wenn du \
+        auf Senden drückst, und ein anonymer Seitenaufruf, gezählt von Plausible. Plausible setzt \
+        keine Cookies und erfasst nichts, was dich identifiziert, sieht aber wie MARA die \
+        IP-Adresse, von der aus du dich verbindest. Nutzen Tor oder ein VPN, wenn dir das \
+        wichtig ist. Was du einfügen, ist nie Teil von beidem.",
     faq_q_mara_learns: "Was erfährt MARA über mich?",
-    faq_a_mara_learns: "Die Transaktionsdaten und Ihre IP-Adresse. Ihr Browser spricht direkt mit \
-        MARA, die Verbindung ist also Ihre, und MARA sieht die Adresse, von der aus Sie surfen. \
-        MARA erfährt weder Ihre PSBT-Metadaten noch Ihre xpubs, Ihren Descriptor oder welche \
-        anderen Transaktionen Sie hier eingereiht haben. Nutzen Sie Tor oder ein VPN, wenn es \
-        Ihnen wichtig ist, dass MARA Ihre IP nicht sieht.",
-    faq_q_guaranteed: "Wird meine Transaktion garantiert geschürft?",
-    faq_a_guaranteed: "Nein. Von Slipstream angenommen heißt nicht bestätigt. MARA schürft nur \
-        einen Teil der Blöcke, nicht alle, und kann Ihre Transaktion aus Gründen verwerfen, die \
-        es nicht erklären muss. Sehen Sie das als bessere Chance, nicht als Zusage. Wenn sie nach \
-        einigen Stunden nicht bestätigt ist, versuchen Sie es erneut.",
+    faq_a_mara_learns: "Die Transaktionsdaten und deine IP-Adresse. Dein Browser spricht direkt mit \
+        MARA, die Verbindung ist also deine, und MARA sieht die Adresse, von der aus du surfst. \
+        MARA erfährt weder deine PSBT-Metadaten noch deine xpubs, deinen Descriptor oder welche \
+        anderen Transaktionen du hier eingereiht hast. Nutze Tor oder ein VPN, wenn es \
+        dir wichtig ist, dass MARA deine IP nicht sieht.",
+    faq_q_guaranteed: "Wird meine Transaktion garantiert gemined?",
+    faq_a_guaranteed: "Nein. Von Slipstream angenommen heißt nicht bestätigt. MARA mined nur \
+        einen Teil der Blöcke, nicht alle, und kann deine Transaktion aus Gründen verwerfen, die \
+        es nicht erklären muss. Betrachte das als bessere Chance, nicht als Zusage. Wenn sie nach \
+        einigen Stunden nicht bestätigt ist, versuche es erneut.",
     faq_q_rate_differs: "Warum weicht die Fee rate von Mempool.space ab?",
     faq_a_rate_differs: "Slipstream wird über eine höhere Fee rate für den Dienst bezahlt. \
         Diese Website erhält davon keinen Anteil und keinerlei Vergütung.",
     faq_q_cpfp: "Kann eine zweite Transaktion die Gebühr für eine günstige bezahlen (CPFP)?",
     faq_a_cpfp: "Nein. Slipstream betrachtet jede Transaktion für sich, eine zu günstige wird \
-        hier also nicht geschürft, auch wenn Sie eine zweite mit höherer Gebühr hinterherschicken. \
-        Sie können weiterhin mehrere zusammenhängende Transaktionen senden, solange jede für sich \
-        genug zahlt: Benennen Sie die Dateien 01, 02, 03, dann gehen sie in dieser Reihenfolge \
-        raus. Wenn eine Transaktion für eine andere zahlen muss, wenden Sie sich direkt an MARA.",
+        hier also nicht gemined, auch wenn du eine zweite mit höherer Gebühr hinterherschickst. \
+        Du kannst weiterhin mehrere zusammenhängende Transaktionen senden, solange jede für sich \
+        genug zahlt: Benenne die Dateien 01, 02, 03, dann gehen sie in dieser Reihenfolge \
+        raus. Wenn eine Transaktion für eine andere zahlen muss, wende dich direkt an MARA.",
     faq_q_risks: "Welche Risiken hat dieser Dienst?",
-    faq_a_risks: "MARA, dem Unternehmen hinter Slipstream, muss man zutrauen, den Angriff nicht \
-        selbst auf Ihre Transaktion auszuführen. Das ist ein vertretbares Risiko verglichen \
+    faq_a_risks: "MARA, dem Unternehmen hinter Slipstream, muss man vertrauen, den Angriff nicht \
+        selbst auf deine Transaktion auszuführen. Das ist ein vertretbares Risiko verglichen \
         damit, sie öffentlich zu übertragen und JEDEM den Angriff zu ermöglichen.",
     faq_q_domain: "Warum liegt diese Seite auf der Wizardsardine-Domain?",
     faq_a_domain: "Wir (Wizardsardine) sind ein Sicherheitsunternehmen und betreuen die \
@@ -150,10 +150,10 @@ pub static STRINGS: Strings = Strings {
         {limit} MiB.",
     msg_no_inputs: "Transaktion hat keine Eingänge.",
     msg_no_outputs: "Transaktion hat keine Ausgänge.",
-    msg_rate_limited_note: "Slipstream drosselt diesen Browser. Warten Sie einige Minuten und \
-        senden Sie erneut.",
+    msg_rate_limited_note: "Slipstream drosselt diesen Browser. Warte einige Minuten und \
+        sende erneut.",
     msg_retrying_now: "Gedrosselt, neuer Versuch jetzt…",
-    msg_unreachable: "MARA Slipstream nicht erreichbar. Prüfen Sie Ihre Verbindung, oder ob ein \
+    msg_unreachable: "MARA Slipstream nicht erreichbar. Prüfe deine Verbindung, oder ob ein \
         VPN, ein Proxy oder eine Browser-Erweiterung slipstream.mara.com blockiert.",
     msg_unexpected_response: "Unerwartete Antwort von Slipstream (HTTP {status})",
 
